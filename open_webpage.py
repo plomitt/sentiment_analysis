@@ -206,7 +206,7 @@ def extract_cryptopanic_info(page, url):
 
     return info
 
-def main(user_url=None):
+def parse_cryptopanic_url(user_url=None):
     """
     Open the CryptoPanic webpage and extract post information.
 
@@ -222,7 +222,7 @@ def main(user_url=None):
 
     with sync_playwright() as p:
         # Launch Chromium browser in headless mode for faster loading
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
 
         try:
             # Create a new page
@@ -234,7 +234,7 @@ def main(user_url=None):
 
             # Wait for page to load - use domcontentloaded instead of networkidle
             try:
-                page.wait_for_load_state('networkidle', timeout=10000)
+                page.wait_for_load_state('load', timeout=10000)
                 print("Page loaded successfully")
             except:
                 print("Page may still be loading, proceeding anyway...")
@@ -278,4 +278,4 @@ if __name__ == "__main__":
 
     # Allow URL to be passed as command line argument
     url = sys.argv[1] if len(sys.argv) > 1 else None
-    main(url)
+    parse_cryptopanic_url(url)
