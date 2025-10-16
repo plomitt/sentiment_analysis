@@ -1,0 +1,406 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analyzer Consistency Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .metric {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            text-align: center;
+            min-width: 150px;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .metric-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .highly-consistent { color: #27ae60; }
+        .moderately-consistent { color: #f39c12; }
+        .inconsistent { color: #e74c3c; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .chart {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .chart img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sentiment Analyzer Consistency Report</h1>
+        <p>Generated on 2025-10-16T21:21:54.232404</p>
+        <p>Model: ibm/granite-4-h-tiny | Temperature: 0.1 | Iterations: 2</p>
+    </div>
+
+    <div class="section">
+        <h2>Overall Statistics</h2>
+        
+        <div class="metric">
+            <div class="metric-value">15</div>
+            <div class="metric-label">Total Articles</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.094</div>
+            <div class="metric-label">Average Std Dev</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.014</div>
+            <div class="metric-label">Average CV</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">100.0%</div>
+            <div class="metric-label">Avg Consistency Rate</div>
+        </div>
+
+        <h3>Enhanced Metrics</h3>
+        <div class="metric">
+            <div class="metric-value">0.012</div>
+            <div class="metric-label">Avg Frequency-Weighted CV</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0.021</div>
+            <div class="metric-label">Avg Robust CV</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">93.3%</div>
+            <div class="metric-label">Avg Mode Frequency</div>
+        </div>
+
+        <h3>Traditional Classification</h3>
+        <div class="metric">
+            <div class="metric-value highly-consistent">86.7%</div>
+            <div class="metric-label">Highly Consistent</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value moderately-consistent">6.7%</div>
+            <div class="metric-label">Moderately Consistent</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value inconsistent">6.7%</div>
+            <div class="metric-label">Inconsistent</div>
+        </div>
+
+        <h3>Enhanced Overall Classification</h3>
+        <div class="metric">
+            <div class="metric-value highly-consistent">86.7%</div>
+            <div class="metric-label">Highly Consistent</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value moderately-consistent">6.7%</div>
+            <div class="metric-label">Moderately Consistent</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value inconsistent">6.7%</div>
+            <div class="metric-label">Inconsistent</div>
+        </div>
+    
+    </div>
+
+    <div class="section">
+        <h2>Traditional Analysis Visualizations</h2>
+        <div class="chart">
+            <img src="consistency_charts.png" alt="Consistency Charts">
+        </div>
+        <div class="chart">
+            <img src="consistency_classification_pie.png" alt="Consistency Classification">
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Enhanced Frequency Analysis Visualizations</h2>
+        <div class="chart">
+            <img src="enhanced_consistency_charts.png" alt="Enhanced Consistency Charts with Frequency Analysis">
+        </div>
+        <div class="chart">
+            <img src="classification_comparison.png" alt="Traditional vs Enhanced Classification Comparison">
+        </div>
+        <p><strong>Enhanced Analysis:</strong> These charts incorporate frequency-weighted metrics that consider how often specific scores occur, providing a more nuanced view of consistency.</p>
+    </div>
+
+    <div class="section">
+        <h2>Article-by-Article Results</h2>
+        
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Title</th>
+                <th>Sample Size</th>
+                <th>Mean</th>
+                <th>Traditional CV</th>
+                <th>Frequency-Weighted CV</th>
+                <th>Robust CV</th>
+                <th>Mode Frequency</th>
+                <th>Unique Values</th>
+                <th>Traditional Classification</th>
+                <th>Enhanced Classification</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td>1</td>
+                <td><a href="https://cryptopanic.com/news/26185301/Square-Enables-First-Bitcoin-Payment-at-US-Coffee-Chain" target="_blank">Square Enables First Bitcoin Payment at US Coffee Chain</a></td>
+                <td>2</td>
+                <td>7.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>2</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26194360/Bitcoin-Holds-110K-But-Traders-Just-Bet-115B-on-Crash-to-104K" target="_blank">Bitcoin Holds $110K, But Traders Just Bet $1.15B on Crash to...</a></td>
+                <td>2</td>
+                <td>3.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>3</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26196623/Solana-vs-Ethereum-Who-Held-Up-Better-During-the-Crypto-Crash" target="_blank">Solana vs Ethereum: Who Held Up Better During the Crypto Cra...</a></td>
+                <td>2</td>
+                <td>3.70</td>
+                <td>0.135</td>
+                <td>0.115</td>
+                <td>0.200</td>
+                <td>50.0%</td>
+                <td>2</td>
+                <td class="inconsistent">Inconsistent</td>
+                <td class="inconsistent">Inconsistent</td>
+            </tr>
+            
+            <tr>
+                <td>4</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26194955/Bitcoin-Holding-Strong-Yet-Trump-Insider-Opens-Massive-120M-Short-Position-New-Crash-Coming" target="_blank">Bitcoin Holding Strong, Yet Trump Insider Opens Massive $120...</a></td>
+                <td>2</td>
+                <td>3.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>5</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26194956/Heres-how-much-Bitcoin-Jesus-Roger-Ver-will-pay-in-US-tax-case" target="_blank">Here’s how much ‘Bitcoin Jesus’ Roger Ver will pay in U.S. t...</a></td>
+                <td>2</td>
+                <td>2.50</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>6</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26194960/Bitcoin-Price-Watch-Short-Term-Charts-Hint-at-AccumulationBut-Dont-Blink" target="_blank">Bitcoin Price Watch: Short-Term Charts Hint at Accumulation—...</a></td>
+                <td>2</td>
+                <td>6.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>7</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26196731/Tether-opensats-donation-2025-250000-for-Bitcoin-public-goods" target="_blank">Tether opensats donation 2025: $250,000 for Bitcoin public g...</a></td>
+                <td>2</td>
+                <td>7.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>8</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26195019/Crypto-market-cap-erases-110-billion-in-huge-1-day-crash" target="_blank">Crypto market cap erases $110 billion  in huge 1-day crash</a></td>
+                <td>2</td>
+                <td>2.50</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>9</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26195078/Morning-Minute-Public-Companies-Amass-100B-in-Bitcoin" target="_blank">Morning Minute: Public Companies Amass $100B+ in Bitcoin</a></td>
+                <td>2</td>
+                <td>7.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>10</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26195101/Bitcoin-Is-Much-Better-Than-Gold-Now-Miles-Deutscher" target="_blank">'Bitcoin Is Much Better Than Gold Now': Miles Deutscher</a></td>
+                <td>2</td>
+                <td>6.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>11</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26195096/WisdomTree-Gains-FCA-Approval-to-Offer-Bitcoin-and-Ethereum-ETPs-to-UK-Retail-Investors" target="_blank">WisdomTree Gains FCA Approval to Offer Bitcoin and Ethereum ...</a></td>
+                <td>2</td>
+                <td>7.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>12</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26196714/Bitcoin-Treasuries-Need-an-Onchain-Strategy" target="_blank">Bitcoin Treasuries Need an Onchain Strategy</a></td>
+                <td>2</td>
+                <td>4.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>13</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26195367/Michael-Saylor-Issues-Rally-Cry-To-Bitcoin-Army-Starve-The-Bears" target="_blank">Michael Saylor Issues Rally Cry To Bitcoin Army: “Starve The...</a></td>
+                <td>2</td>
+                <td>6.70</td>
+                <td>0.075</td>
+                <td>0.063</td>
+                <td>0.111</td>
+                <td>50.0%</td>
+                <td>2</td>
+                <td class="moderately-consistent">Moderately Consistent</td>
+                <td class="moderately-consistent">Moderately Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>14</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26196110/Square-completes-first-Bitcoin-payment-at-US-coffee-chain" target="_blank">Square completes first Bitcoin payment at U.S. coffee chain</a></td>
+                <td>2</td>
+                <td>6.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+            <tr>
+                <td>15</td>
+                <td><a href="https://cryptopanic.com/news/bitcoin/26196720/Morning-Crypto-Report-Ripple-CEO-Demands-Equal-Rights-XRP-Suffers-Brutal-635-Liquidation-Imbalance-Ethereum-Targets-2-Trillion-Stablecoin-Market" target="_blank">Morning Crypto Report: Ripple CEO Demands Equal Rights, XRP ...</a></td>
+                <td>2</td>
+                <td>3.20</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>0.000</td>
+                <td>100.0%</td>
+                <td>1</td>
+                <td class="highly-consistent">Highly Consistent</td>
+                <td class="highly-consistent">Highly Consistent</td>
+            </tr>
+            
+        </tbody>
+    </table>
+    <p><strong>Note:</strong> Enhanced classification considers frequency of scores, giving more weight to consistent patterns.</p>
+    
+    </div>
+</body>
+</html>
+    

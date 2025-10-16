@@ -1,0 +1,970 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-16T21:21:54.232404",
+    "total_iterations": 2,
+    "total_articles": 15,
+    "model": "ibm/granite-4-h-tiny",
+    "temperature": 0.1,
+    "input_file": "src/sentiment_analysis/sentiments/news_with_sentiment.json",
+    "timeout_between_calls": 0.5
+  },
+  "overall_statistics": {
+    "total_articles": 15,
+    "avg_std_dev": 0.09428090415820635,
+    "median_std_dev": 0.0,
+    "max_std_dev": 0.7071067811865476,
+    "min_std_dev": 0.0,
+    "avg_cv": 0.01398413338711846,
+    "median_cv": 0.0,
+    "avg_consistency_rate": 1.0,
+    "avg_range": 0.13333333333333333,
+    "avg_frequency_weighted_cv": 0.01188651337905069,
+    "avg_robust_cv": 0.020732876159741828,
+    "avg_mode_frequency": 0.9333333333333333,
+    "consistency_distribution": {
+      "highly_consistent": 13,
+      "moderately_consistent": 1,
+      "inconsistent": 1,
+      "highly_consistent_pct": 86.66666666666667,
+      "moderately_consistent_pct": 6.666666666666667,
+      "inconsistent_pct": 6.666666666666667
+    },
+    "traditional_classification_distribution": {
+      "highly_consistent": 13,
+      "moderately_consistent": 1,
+      "inconsistent": 1,
+      "highly_consistent_pct": 86.66666666666667,
+      "moderately_consistent_pct": 6.666666666666667,
+      "inconsistent_pct": 6.666666666666667
+    },
+    "frequency_adjusted_classification_distribution": {
+      "highly_consistent": 13,
+      "moderately_consistent": 1,
+      "inconsistent": 1,
+      "highly_consistent_pct": 86.66666666666667,
+      "moderately_consistent_pct": 6.666666666666667,
+      "inconsistent_pct": 6.666666666666667
+    },
+    "robust_classification_distribution": {
+      "highly_consistent": 13,
+      "moderately_consistent": 0,
+      "inconsistent": 2,
+      "highly_consistent_pct": 86.66666666666667,
+      "moderately_consistent_pct": 0.0,
+      "inconsistent_pct": 13.333333333333334
+    },
+    "overall_classification_distribution": {
+      "highly_consistent": 13,
+      "moderately_consistent": 1,
+      "inconsistent": 1,
+      "highly_consistent_pct": 86.66666666666667,
+      "moderately_consistent_pct": 6.666666666666667,
+      "inconsistent_pct": 6.666666666666667
+    }
+  },
+  "statistical_tests": {
+    "normality_tests": []
+  },
+  "article_results": [
+    {
+      "title": "Square Enables First Bitcoin Payment at US Coffee Chain",
+      "body": "All 10 wallet tests succeeded at the coffee shop instantly as Square prepares worldwide rollout of its new Bitcoin payment system.",
+      "timestamp": "Thu Oct 16 2025 08:51:39 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/26185301/Square-Enables-First-Bitcoin-Payment-at-US-Coffee-Chain",
+      "unix_timestamp": 1760597499,
+      "scores": [
+        7.2,
+        7.2
+      ],
+      "reasonings": [
+        "Square's successful integration of Bitcoin payments at a major US coffee chain represents significant real-world adoption validation for institutional investors and could spur further enterprise-level adoption. While the immediate price impact may be limited, this type of mainstream merchant acceptance is crucial for long-term value appreciation as it creates new demand channels and legitimizes Bitcoin in traditional financial circles.",
+        "Square's successful integration of Bitcoin payments at a major US coffee chain represents significant real-world adoption validation for Bitcoin as a payment method. This move could potentially expand Bitcoin's merchant base, increase demand from consumers using Square services to pay with crypto, and signal growing institutional acceptance. While the immediate market impact may be moderate due to limited scale compared to global fiat transactions, this development aligns with positive sentiment factors like institutional adoption and technical feasibility, suggesting a favorable outlook for Bitcoin in the medium term."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:17.320777",
+        "2025-10-16T21:21:19.003696"
+      ],
+      "statistics": {
+        "mean": 7.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 7.2,
+        "max": 7.2,
+        "range": 0.0,
+        "median": 7.2,
+        "q1": 7.2,
+        "q3": 7.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 7.2,
+        "ci_upper": 7.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 7.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 7.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Bitcoin Holds $110K, But Traders Just Bet $1.15B on Crash to $104K",
+      "body": "Bitcoin institutional traders bet over $1. 15 billion on downside protection in 24 hours with put options accounting for 28% of market transactions targeting $104,000 to $108,000 range, as one whale opened a $392 million short position with $5. 7 million unrealized gains while Bitcoin holds above $110,000.",
+      "timestamp": "Thu Oct 16 2025 14:11:11 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26194360/Bitcoin-Holds-110K-But-Traders-Just-Bet-115B-on-Crash-to-104K",
+      "unix_timestamp": 1760616671,
+      "scores": [
+        3.2,
+        3.2
+      ],
+      "reasonings": [
+        "The news indicates strong bearish sentiment among institutional traders betting heavily on a crash to $104K, with significant short positions opening up. However, Bitcoin is currently holding above $110K, suggesting that the downside may be limited by strong support at this level. The high volume of put options and whale activity point to cautious optimism rather than outright panic selling. While there are bearish indicators, the price resilience against a major crash suggests potential for continued sideways or slightly bullish movement in the near term.",
+        "The data suggests a mix of bullish and bearish sentiment among institutional traders, with significant downside protection bets indicating some bearish positioning but Bitcoin's price holding above $110K shows underlying strength. The large short position could signal profit-taking or anticipation of further declines if key support breaks."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:20.227766",
+        "2025-10-16T21:21:21.578248"
+      ],
+      "statistics": {
+        "mean": 3.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 3.2,
+        "max": 3.2,
+        "range": 0.0,
+        "median": 3.2,
+        "q1": 3.2,
+        "q3": 3.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 3.2,
+        "ci_upper": 3.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 3.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 3.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Solana vs Ethereum: Who Held Up Better During the Crypto Crash",
+      "body": "During the recent crypto market sell-off that was triggered by Trump’s tariffs on China, the crypto market witnessed significant declines. The market saw over $19 billion in liquidations, marking one of the largest single-day losses in crypto history. While Bitcoin dropped below $105k levels, major altcoins also saw steep declines. Solana Handles High Volume Despite …",
+      "timestamp": "Thu Oct 16 2025 14:19:42 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26196623/Solana-vs-Ethereum-Who-Held-Up-Better-During-the-Crypto-Crash",
+      "unix_timestamp": 1760617182,
+      "scores": [
+        4.2,
+        3.2
+      ],
+      "reasonings": [
+        "The article discusses a major crypto market sell-off triggered by geopolitical factors (Trump's tariffs) but doesn't provide specific details about Solana's performance during the crash. While Solana is mentioned as handling high volume, without concrete data on price action or trading volume changes compared to Ethereum and other altcoins, it's difficult to assess its relative strength accurately. The lack of specifics in the body makes it challenging to assign a higher score for positive sentiment.",
+        "The article discusses a major crypto market sell-off triggered by geopolitical factors, with Bitcoin experiencing significant declines alongside other altcoins. While Solana is mentioned as handling high volume despite the downturn, the overall sentiment is negative due to widespread losses and lack of clear positive catalysts for either cryptocurrency. The focus on Trump's tariffs adds uncertainty without immediate supportive developments."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:22.712931",
+        "2025-10-16T21:21:24.182007"
+      ],
+      "statistics": {
+        "mean": 3.7,
+        "std_dev": 0.7071067811865476,
+        "variance": 0.5,
+        "cv": 0.13513513513513511,
+        "min": 3.2,
+        "max": 4.2,
+        "range": 1.0,
+        "median": 3.7,
+        "q1": 3.45,
+        "q3": 3.95,
+        "iqr": 0.5,
+        "consistency_rate": 1.0,
+        "ci_lower": -2.6531023682160475,
+        "ci_upper": 10.053102368216049,
+        "margin_error": 6.353102368216048,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 3.2,
+          "mode_count": 1,
+          "mode_frequency": 0.5,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 2
+        },
+        "robust_statistics": {
+          "mad": 0.7413,
+          "robust_cv": 0.20035135135135132,
+          "huber_location": 3.7,
+          "huber_scale": 0.8014296324245529,
+          "huber_cv": 0.21660260335798726
+        },
+        "frequency_weighted_cv": 0.11486486486486484,
+        "enhanced_classification": {
+          "traditional": "Inconsistent",
+          "frequency_adjusted": "Inconsistent",
+          "robust": "Inconsistent",
+          "overall": "Inconsistent"
+        }
+      }
+    },
+    {
+      "title": "Bitcoin Holding Strong, Yet Trump Insider Opens Massive $120M Short Position – New Crash Coming?",
+      "body": "A trader dubbed \"Trump's insider\" opened a $120 million to $127 million Bitcoin short position at $111,386 ahead of a presidential announcement maintaining a 100% win rate after generating $190 million to $200 million in profits from October 11's market crash that triggered $19 billion in liquidations.",
+      "timestamp": "Thu Oct 16 2025 14:24:50 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26194955/Bitcoin-Holding-Strong-Yet-Trump-Insider-Opens-Massive-120M-Short-Position-New-Crash-Coming",
+      "unix_timestamp": 1760617490,
+      "scores": [
+        3.2,
+        3.2
+      ],
+      "reasonings": [
+        "The news presents conflicting signals that create a neutral-to-weakened sentiment for Bitcoin in the short term. While the insider's large short position suggests bearish expectations, the prior successful trades by this trader and the overall market crash profits indicate potential continued bullish momentum. The mixed signals from both sides of the trade make it difficult to confidently predict price direction or volume impact.",
+        "The news presents conflicting signals that create a neutral-to-weakened sentiment for Bitcoin in the short term. While Trump's insider has profited from recent market volatility, opening a massive $120M short position suggests bearish expectations ahead of an upcoming presidential announcement. However, the trader's consistent profitability from previous crashes and potential regulatory uncertainty could still support some buying interest. The overall impact is likely to be mixed with room for further downside if negative sentiment dominates."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:25.191429",
+        "2025-10-16T21:21:26.836620"
+      ],
+      "statistics": {
+        "mean": 3.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 3.2,
+        "max": 3.2,
+        "range": 0.0,
+        "median": 3.2,
+        "q1": 3.2,
+        "q3": 3.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 3.2,
+        "ci_upper": 3.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 3.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 3.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Here’s how much ‘Bitcoin Jesus’ Roger Ver will pay in U.S. tax case",
+      "body": "Roger Ver, one of Bitcoin’s (BTC) earliest and most controversial champions, has agreed to pay $49. 9 million to resolve a … Continue reading The post Here’s how much ‘Bitcoin Jesus’ Roger Ver will pay in U. S.",
+      "timestamp": "Thu Oct 16 2025 14:27:11 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26194956/Heres-how-much-Bitcoin-Jesus-Roger-Ver-will-pay-in-US-tax-case",
+      "unix_timestamp": 1760617631,
+      "scores": [
+        2.5,
+        2.5
+      ],
+      "reasonings": [
+        "Roger Ver's legal troubles and financial settlement are negative for Bitcoin sentiment, as they create regulatory uncertainty and damage the image of a prominent crypto advocate. This could lead to short-term selling pressure and undermine confidence in Bitcoin's long-term viability.",
+        "Roger Ver's legal troubles and financial settlement are negative for Bitcoin sentiment, as they create regulatory uncertainty and damage the image of a prominent crypto advocate. This could lead to short-term selling pressure and undermine confidence in Bitcoin's long-term viability."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:27.615577",
+        "2025-10-16T21:21:28.857964"
+      ],
+      "statistics": {
+        "mean": 2.5,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 2.5,
+        "max": 2.5,
+        "range": 0.0,
+        "median": 2.5,
+        "q1": 2.5,
+        "q3": 2.5,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 2.5,
+        "ci_upper": 2.5,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 2.5,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 2.5,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Bitcoin Price Watch: Short-Term Charts Hint at Accumulation—But Don’t Blink",
+      "body": "Another day, another dance on the crypto high wire. Bitcoin may be clinging just above the $111K ledge, but the charts are less interested in a party and more in plotting their next move—quietly, methodically, and with just a hint of drama. Bitcoin Chart Outlook Let’s start with the daily chart, where the grand stage […]",
+      "timestamp": "Thu Oct 16 2025 14:28:41 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26194960/Bitcoin-Price-Watch-Short-Term-Charts-Hint-at-AccumulationBut-Dont-Blink",
+      "unix_timestamp": 1760617721,
+      "scores": [
+        6.2,
+        6.2
+      ],
+      "reasonings": [
+        "The article suggests short-term bullish sentiment based on accumulation patterns, but the price remains near key resistance levels without clear breakout confirmation. While there are positive signs of buying interest, the cautious tone from technical analysis and lack of decisive momentum create a neutral-to-slightly-bullish outlook rather than strong conviction for further upside.",
+        "The article suggests short-term bullish sentiment with potential accumulation hints, but lacks clear fundamental catalysts for a stronger buy signal. The price hovering near $111K indicates indecision in the market, while technical patterns like golden cross could provide support if sustained. However, regulatory uncertainty and lack of major institutional adoption news limit upside potential in the near term."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:29.756276",
+        "2025-10-16T21:21:31.195520"
+      ],
+      "statistics": {
+        "mean": 6.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 6.2,
+        "max": 6.2,
+        "range": 0.0,
+        "median": 6.2,
+        "q1": 6.2,
+        "q3": 6.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 6.2,
+        "ci_upper": 6.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 6.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 6.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Tether opensats donation 2025: $250,000 for Bitcoin public goods",
+      "body": "Today Tether donated $250,000 to OpenSats; this Tether-Opensats donation aims to strengthen free, open-source Bitcoin projects, privacy tools, research and education. What is the significance of this donation in opensats bitcoin grants initiatives? The $250,000 gift supports OpenSats’ operations and its grant-making programme, extending financial support to developers, researchers, educators and designers. OpenSats is a […]",
+      "timestamp": "Thu Oct 16 2025 14:34:51 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26196731/Tether-opensats-donation-2025-250000-for-Bitcoin-public-goods",
+      "unix_timestamp": 1760618091,
+      "scores": [
+        7.2,
+        7.2
+      ],
+      "reasonings": [
+        "Tether's $250,000 donation to OpenSats for Bitcoin public goods represents a positive development for the ecosystem. This funding supports open-source projects, privacy tools, research, and education initiatives that strengthen Bitcoin infrastructure and adoption. While not an immediate price catalyst, such philanthropic backing enhances community confidence in Bitcoin's long-term viability and developer support. The donation signals institutional-level commitment to Bitcoin's public goods, potentially attracting more developers and users to the ecosystem. However, the impact on short-term trading metrics may be limited due to the relatively small amount compared to overall market capitalization.",
+        "Tether's significant donation of $250,000 to OpenSats demonstrates strong institutional support for Bitcoin public goods and open-source projects. This aligns with the sentiment framework's 'WEAK BUY' category (6.1-8.0), as it shows growing confidence from a major stablecoin issuer in Bitcoin's long-term potential and ecosystem development. The donation directly benefits developers, researchers, educators, and designers working on privacy tools and educational initiatives for Bitcoin, creating positive network effects that could drive adoption and value appreciation over time."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:32.580713",
+        "2025-10-16T21:21:34.349280"
+      ],
+      "statistics": {
+        "mean": 7.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 7.2,
+        "max": 7.2,
+        "range": 0.0,
+        "median": 7.2,
+        "q1": 7.2,
+        "q3": 7.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 7.2,
+        "ci_upper": 7.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 7.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 7.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Crypto market cap erases $110 billion  in huge 1-day crash",
+      "body": "The cryptocurrency market shedded approximately $110 billion from its total market cap within less than 24 hours as it suffered another dramatic crash this week. According to data retrieved by Finbold from CoinMarketCap, the global market capitalization dropped from $3.86 trillion on October 15 (12:00 p.m",
+      "timestamp": "Thu Oct 16 2025 14:42:09 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26195019/Crypto-market-cap-erases-110-billion-in-huge-1-day-crash",
+      "unix_timestamp": 1760618529,
+      "scores": [
+        2.5,
+        2.5
+      ],
+      "reasonings": [
+        "The massive $110 billion crash in cryptocurrency market cap indicates severe negative sentiment, potential systemic risks, and major selling pressure across assets including Bitcoin. Such a dramatic drop suggests extreme fear among investors, regulatory uncertainty, or significant adverse events impacting the broader crypto ecosystem. For Bitcoin specifically, this could lead to further price declines unless fundamental support emerges soon.",
+        "The massive $110 billion crash in cryptocurrency market cap represents a severe negative catalyst for Bitcoin specifically. Such an extreme drop indicates panic selling, loss of investor confidence, and potential systemic issues within the crypto ecosystem. For Bitcoin traders, this creates a strong sell signal due to the unprecedented scale of the downturn which could lead to further downward momentum unless fundamental factors improve quickly."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:35.315237",
+        "2025-10-16T21:21:36.781402"
+      ],
+      "statistics": {
+        "mean": 2.5,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 2.5,
+        "max": 2.5,
+        "range": 0.0,
+        "median": 2.5,
+        "q1": 2.5,
+        "q3": 2.5,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 2.5,
+        "ci_upper": 2.5,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 2.5,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 2.5,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Morning Minute: Public Companies Amass $100B+ in Bitcoin",
+      "body": "The rise of institutions piling into Bitcoin has led to some surprising impacts on the market.",
+      "timestamp": "Thu Oct 16 2025 14:46:03 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26195078/Morning-Minute-Public-Companies-Amass-100B-in-Bitcoin",
+      "unix_timestamp": 1760618763,
+      "scores": [
+        7.2,
+        7.2
+      ],
+      "reasonings": [
+        "The accumulation of Bitcoin by public companies represents significant institutional interest and validates the asset's legitimacy as a tradable commodity. While not an immediate price catalyst, this trend suggests growing acceptance among traditional finance players, potentially leading to increased demand over time. The $100B+ figure underscores the scale of institutional involvement, which could support upward price pressure if sustained.",
+        "The accumulation of Bitcoin by public companies represents significant institutional interest and validates the asset's legitimacy as a store of value. This trend suggests growing mainstream acceptance, which could drive long-term price appreciation despite short-term market fluctuations."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:37.732047",
+        "2025-10-16T21:21:38.944240"
+      ],
+      "statistics": {
+        "mean": 7.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 7.2,
+        "max": 7.2,
+        "range": 0.0,
+        "median": 7.2,
+        "q1": 7.2,
+        "q3": 7.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 7.2,
+        "ci_upper": 7.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 7.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 7.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "'Bitcoin Is Much Better Than Gold Now': Miles Deutscher",
+      "body": "Bitcoin indeed losing to gold in terms of general market performance, but it could be better longer-term choice",
+      "timestamp": "Thu Oct 16 2025 14:51:00 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26195101/Bitcoin-Is-Much-Better-Than-Gold-Now-Miles-Deutscher",
+      "unix_timestamp": 1760619060,
+      "scores": [
+        6.2,
+        6.2
+      ],
+      "reasonings": [
+        "Bitcoin's relative underperformance compared to gold in the short term is a neutral signal, but Miles Deutscher's bullish outlook suggests potential long-term upside if Bitcoin can reclaim its status as 'better than gold.' This mixed sentiment creates room for both caution and optimism among traders.",
+        "Bitcoin's relative underperformance compared to gold in the short term creates a potential buying opportunity, but long-term adoption and institutional interest are key drivers for price appreciation. The sentiment is cautiously optimistic with room for improvement."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:39.764150",
+        "2025-10-16T21:21:40.959054"
+      ],
+      "statistics": {
+        "mean": 6.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 6.2,
+        "max": 6.2,
+        "range": 0.0,
+        "median": 6.2,
+        "q1": 6.2,
+        "q3": 6.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 6.2,
+        "ci_upper": 6.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 6.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 6.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "WisdomTree Gains FCA Approval to Offer Bitcoin and Ethereum ETPs to UK Retail Investors",
+      "body": "WisdomTree announced on Thursday it has received approval from the UK Financial Conduct Authority (FCA) to make its UK-listed cryptocurrency exchange-traded products (ETPs) available to retail investors.",
+      "timestamp": "Thu Oct 16 2025 14:55:57 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26195096/WisdomTree-Gains-FCA-Approval-to-Offer-Bitcoin-and-Ethereum-ETPs-to-UK-Retail-Investors",
+      "unix_timestamp": 1760619357,
+      "scores": [
+        7.2,
+        7.2
+      ],
+      "reasonings": [
+        "UK FCA approval for WisdomTree's Bitcoin and Ethereum ETPs represents a significant regulatory endorsement, opening the door to institutional investment through retail channels in the UK. This move lowers barriers for traditional investors to access crypto assets directly via regulated products, potentially driving demand from both retail and institutional sources. While immediate market impact may be moderate due to limited trading volume initially, this development aligns with positive institutional adoption trends and could catalyze further interest as more jurisdictions follow suit.",
+        "UK FCA approval for WisdomTree's Bitcoin and Ethereum ETPs represents a significant regulatory endorsement that opens the door to institutional investment through UK retail channels. This move lowers barriers for traditional investors, potentially increasing demand from regulated entities. While immediate market impact may be moderate due to limited size of ETP offerings, it creates a positive sentiment catalyst by demonstrating growing acceptance of crypto assets in mainstream financial infrastructure."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:42.115241",
+        "2025-10-16T21:21:43.633160"
+      ],
+      "statistics": {
+        "mean": 7.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 7.2,
+        "max": 7.2,
+        "range": 0.0,
+        "median": 7.2,
+        "q1": 7.2,
+        "q3": 7.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 7.2,
+        "ci_upper": 7.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 7.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 7.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Bitcoin Treasuries Need an Onchain Strategy",
+      "body": "\"Bitcoin treasuries require a comprehensive on-chain strategy to effectively manage their assets, enhance liquidity, and maximize returns while ensuring security and transparency in their transactions.\"",
+      "timestamp": "Thu Oct 16 2025 15:00:00 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26196714/Bitcoin-Treasuries-Need-an-Onchain-Strategy",
+      "unix_timestamp": 1760619600,
+      "scores": [
+        4.2,
+        4.2
+      ],
+      "reasonings": [
+        "The article discusses a fundamental need for Bitcoin treasuries to develop an on-chain strategy, which suggests cautious optimism rather than strong bullishness or bearish sentiment. While the topic is important for long-term treasury management and could potentially lead to increased institutional involvement in Bitcoin, it doesn't directly indicate immediate positive catalysts like regulatory approval, major adoption news, or technical breakthroughs that would push the score higher.",
+        "The article discusses a fundamental need for Bitcoin treasuries to develop an on-chain strategy, which suggests cautious optimism rather than strong bullishness or bearish sentiment. While the topic is important for long-term treasury management and could potentially lead to increased institutional adoption of Bitcoin as collateral or reserve asset, it doesn't directly indicate immediate positive catalysts like regulatory approval, major institutional investment, or technical breakthroughs that would push the score higher."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:44.688615",
+        "2025-10-16T21:21:46.268828"
+      ],
+      "statistics": {
+        "mean": 4.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 4.2,
+        "max": 4.2,
+        "range": 0.0,
+        "median": 4.2,
+        "q1": 4.2,
+        "q3": 4.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 4.2,
+        "ci_upper": 4.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 4.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 4.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Michael Saylor Issues Rally Cry To Bitcoin Army: “Starve The Bears!”",
+      "body": "Michael Saylor’s latest push to steady Bitcoin holders arrived as markets wobbled this week. A 15-second clip and a fresh corporate buy were timed closely, and both landed while investors were still digesting a sharp pullback that pushed Bitcoin near $102,000 before a rebound. Related Reading: Dogecoin Sheds 25% As $57M Flees Market — Can The Memecoin Recover? Saylor Issues Viral Warning According to a short cinematic video titled “Don’t Feed The [Bitcoin] Bears,” Saylor used a playful metaphor — “Ursus Bitcoinius, the Bitcoin Bear” — to urge holders not to reward bearish chatter. Based on reports, Strategy, formerly MicroStrategy, also announced a purchase of 220 BTC for about $27",
+      "timestamp": "Thu Oct 16 2025 15:00:49 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26195367/Michael-Saylor-Issues-Rally-Cry-To-Bitcoin-Army-Starve-The-Bears",
+      "unix_timestamp": 1760619649,
+      "scores": [
+        7.2,
+        6.2
+      ],
+      "reasonings": [
+        "Michael Saylor's aggressive messaging and MicroStrategy's recent large Bitcoin purchase create positive institutional adoption sentiment, potentially supporting price recovery from current pullback levels. However, the sharp near-term correction suggests some bearish pressure remains, warranting cautious optimism rather than outright bullishness.",
+        "Michael Saylor's bullish messaging and Strategy's recent large Bitcoin purchase create a mixed sentiment for the short-term. While institutional interest is positive, the sharp pullback near $102k introduces some bearish pressure. The overall market impact appears neutral to slightly bullish depending on how investors interpret these actions."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:47.103096",
+        "2025-10-16T21:21:48.467438"
+      ],
+      "statistics": {
+        "mean": 6.7,
+        "std_dev": 0.7071067811865476,
+        "variance": 0.5,
+        "cv": 0.07462686567164178,
+        "min": 6.2,
+        "max": 7.2,
+        "range": 1.0,
+        "median": 6.7,
+        "q1": 6.45,
+        "q3": 6.95,
+        "iqr": 0.5,
+        "consistency_rate": 1.0,
+        "ci_lower": 0.3468976317839525,
+        "ci_upper": 13.053102368216049,
+        "margin_error": 6.353102368216048,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 6.2,
+          "mode_count": 1,
+          "mode_frequency": 0.5,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 2
+        },
+        "robust_statistics": {
+          "mad": 0.7413,
+          "robust_cv": 0.11064179104477612,
+          "huber_location": 6.7,
+          "huber_scale": 0.8014296324245529,
+          "huber_cv": 0.11961636304844073
+        },
+        "frequency_weighted_cv": 0.06343283582089551,
+        "enhanced_classification": {
+          "traditional": "Moderately Consistent",
+          "frequency_adjusted": "Moderately Consistent",
+          "robust": "Inconsistent",
+          "overall": "Moderately Consistent"
+        }
+      }
+    },
+    {
+      "title": "Square completes first Bitcoin payment at U.S. coffee chain",
+      "body": "Square has enabled Compass Coffee as the first business to accept Bitcoin payments through Square’s point-of-sale terminal.",
+      "timestamp": "Thu Oct 16 2025 15:03:03 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26196110/Square-completes-first-Bitcoin-payment-at-US-coffee-chain",
+      "unix_timestamp": 1760619783,
+      "scores": [
+        6.2,
+        6.2
+      ],
+      "reasonings": [
+        "Square's integration of Bitcoin payments through its point-of-sale terminal represents a significant step forward for mainstream adoption, particularly in the retail sector where consumer spending is high. While this move doesn't directly inject institutional capital or create new demand channels like ETFs or enterprise integrations might, it does lower barriers to entry for individual consumers and small businesses looking to experiment with Bitcoin transactions. This could lead to increased awareness and potentially modest increases in transaction volume, supporting a gradual upward price movement. However, the impact is likely to be moderate rather than transformative.",
+        "Square's integration of Bitcoin payments through its point-of-sale terminal represents a significant step towards mainstream adoption, particularly in the retail sector. While this is positive for long-term use cases and institutional validation, it appears to be an isolated case so far with limited immediate market impact. The transaction size and frequency will determine if this sets a precedent or remains a niche example."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:49.739279",
+        "2025-10-16T21:21:51.195100"
+      ],
+      "statistics": {
+        "mean": 6.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 6.2,
+        "max": 6.2,
+        "range": 0.0,
+        "median": 6.2,
+        "q1": 6.2,
+        "q3": 6.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 6.2,
+        "ci_upper": 6.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 6.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 6.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    },
+    {
+      "title": "Morning Crypto Report: Ripple CEO Demands Equal Rights, XRP Suffers Brutal 635% Liquidation Imbalance, Ethereum Targets $2 Trillion Stablecoin Market",
+      "body": "This morning on crypto market, Ripple's CEO blast regulators over banking access, XRP traders face 635% liquidation spike, Ethereum tipped to capture 60% of $2 trillion stablecoin market and Bitcoin stalled near $111,000 after $126 million long",
+      "timestamp": "Thu Oct 16 2025 15:14:00 GMT+0200 (Central European Summer Time)",
+      "url": "https://cryptopanic.com/news/bitcoin/26196720/Morning-Crypto-Report-Ripple-CEO-Demands-Equal-Rights-XRP-Suffers-Brutal-635-Liquidation-Imbalance-Ethereum-Targets-2-Trillion-Stablecoin-Market",
+      "unix_timestamp": 1760620440,
+      "scores": [
+        3.2,
+        3.2
+      ],
+      "reasonings": [
+        "The news presents mixed signals for Bitcoin traders. Ripple's CEO criticism of regulators could create regulatory uncertainty, potentially impacting investor sentiment negatively. However, the XRP liquidation spike may attract short-term speculative trading rather than long-term bearish sentiment. Ethereum's stablecoin market dominance projection is bullish but not directly related to Bitcoin price movements. The mention of Bitcoin stalling near $111k with large long positions suggests some bearish pressure but lacks clear direction or catalysts for a sustained downtrend.",
+        "The news presents mixed signals for Bitcoin traders. Ripple's CEO criticism of regulators could create regulatory uncertainty, potentially impacting investor sentiment negatively. However, the XRP liquidation spike may attract short-term speculative trading rather than long-term bearish sentiment. Ethereum's stablecoin market dominance projection is bullish but not directly tied to Bitcoin price movements. The mention of Bitcoin stalling near $111k with large long positions suggests some short-term bearish pressure but lacks clear direction without more context on the specific technical factors driving this stagnation."
+      ],
+      "run_timestamps": [
+        "2025-10-16T21:21:52.395448",
+        "2025-10-16T21:21:54.152948"
+      ],
+      "statistics": {
+        "mean": 3.2,
+        "std_dev": 0.0,
+        "variance": 0.0,
+        "cv": 0.0,
+        "min": 3.2,
+        "max": 3.2,
+        "range": 0.0,
+        "median": 3.2,
+        "q1": 3.2,
+        "q3": 3.2,
+        "iqr": 0.0,
+        "consistency_rate": 1.0,
+        "ci_lower": 3.2,
+        "ci_upper": 3.2,
+        "margin_error": 0.0,
+        "sample_size": 2,
+        "frequency_metrics": {
+          "mode_value": 3.2,
+          "mode_count": 2,
+          "mode_frequency": 1.0,
+          "outlier_values": [],
+          "outlier_count": 0,
+          "outlier_frequency": 0.0,
+          "unique_values": 1
+        },
+        "robust_statistics": {
+          "mad": 0.0,
+          "robust_cv": 0.0,
+          "huber_location": 3.2,
+          "huber_scale": -0.0,
+          "huber_cv": -0.0
+        },
+        "frequency_weighted_cv": 0.0,
+        "enhanced_classification": {
+          "traditional": "Highly Consistent",
+          "frequency_adjusted": "Highly Consistent",
+          "robust": "Highly Consistent",
+          "overall": "Highly Consistent"
+        }
+      }
+    }
+  ]
+}
