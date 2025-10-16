@@ -212,3 +212,4 @@ __marimo__/
 /temp
 src/sentiment_analysis/sentiments
 src/sentiment_analysis/charts
+src/sentiment_analysis/consistency

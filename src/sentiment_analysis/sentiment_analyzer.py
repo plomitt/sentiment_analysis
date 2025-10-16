@@ -90,7 +90,6 @@ def analyze_article(title: str, body: str, client: Optional[Instructor] = None) 
 
         # Use Instructor to get structured output
         sentiment = client.chat.completions.create(
-            model="gpt-4o-mini",  # You can adjust this based on your preference
             messages=[
                 {"role": "system", "content": "You are an expert Bitcoin trading analyst."},
                 {"role": "user", "content": prompt}
