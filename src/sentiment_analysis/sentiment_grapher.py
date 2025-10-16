@@ -283,7 +283,18 @@ def create_sentiment_chart(
     if title:
         chart_title = title
     else:
-        time_range = f"{df['datetime'].min().strftime('%H:%M')} - {df['datetime'].max().strftime('%H:%M')}"
+        # Get start and end datetime objects
+        start_dt = df['datetime'].min()
+        end_dt = df['datetime'].max()
+
+        # Check if start and end are on the same day
+        if start_dt.date() == end_dt.date():
+            # Same day: "Oct 16, 09:30 - 14:45"
+            time_range = f"{start_dt.strftime('%b %d, %H:%M')} - {end_dt.strftime('%H:%M')}"
+        else:
+            # Different days: "Oct 15, 16:30 - Oct 16, 10:15"
+            time_range = f"{start_dt.strftime('%b %d, %H:%M')} - {end_dt.strftime('%b %d, %H:%M')}"
+
         chart_title = f"Sentiment Analysis - {time_range}"
 
     if total_charts > 1:
