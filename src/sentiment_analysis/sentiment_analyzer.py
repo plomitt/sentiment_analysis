@@ -7,6 +7,7 @@ sentiment scores with trading-focused reasoning.
 
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import logging
 import os
@@ -52,6 +53,7 @@ class ArticleWithSentiment(BaseModel):
     body: str = Field(..., description="Article body content")
     timestamp: str = Field(..., description="Article timestamp")
     url: str = Field(..., description="Article URL")
+    unix_timestamp: Optional[int] = Field(None, description="Unix timestamp for sorting and analysis")
     sentiment: Optional[SentimentAnalysis] = Field(None, description="Sentiment analysis results")
 
 
@@ -135,6 +137,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
             body = article.get('body', '')
             timestamp = article.get('timestamp', '')
             url = article.get('url', '')
+            unix_timestamp = article.get('unix_timestamp')
 
             # Analyze sentiment
             sentiment = analyze_article(title, body, client)
@@ -145,6 +148,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
                 body=body,
                 timestamp=timestamp,
                 url=url,
+                unix_timestamp=unix_timestamp,
                 sentiment=sentiment
             )
 
@@ -286,7 +290,7 @@ def main():
 
     # Define file paths relative to script location
     input_file = os.path.join(script_dir, "news.json")
-    output_file = os.path.join(script_dir, "news_with_sentiment.json")
+    output_file = os.path.join(script_dir, "sentiments", "news_with_sentiment.json")
 
     # Check if input file exists
     if not os.path.exists(input_file):

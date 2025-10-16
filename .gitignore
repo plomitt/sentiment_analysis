@@ -210,3 +210,5 @@ __marimo__/
 .claude
 .serena
 /temp
+src/sentiment_analysis/sentiments
+src/sentiment_analysis/charts
