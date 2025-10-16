@@ -10,6 +10,7 @@ import argparse
 import json
 import logging
 import os
+import pickle
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +25,7 @@ from scipy import stats
 from scipy.stats import variation, pearsonr
 
 # Import the existing sentiment analyzer
+from sentiment_analysis.client_manager import build_client
 from sentiment_analyzer import analyze_article, load_articles_from_json
 
 # Set up logging
@@ -60,13 +62,13 @@ def parse_arguments():
     parser.add_argument(
         "--timeout",
         type=float,
-        default=30.0,
-        help="Timeout in seconds between API calls to avoid rate limiting (default: 30.0)"
+        default=0.0,
+        help="Timeout in seconds between API calls to avoid rate limiting (default: 0.0)"
     )
     return parser.parse_args()
 
 
-def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float = 30.0) -> List[Dict]:
+def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float = 0.0) -> List[Dict]:
     """
     Run sentiment analysis multiple times on each article.
 
@@ -96,12 +98,14 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
             "run_timestamps": []
         }
 
+        client = build_client()
+
         for iteration in range(iterations):
             try:
                 logger.info(f"  Running iteration {iteration + 1}/{iterations}")
 
                 # Run sentiment analysis
-                sentiment = analyze_article(article["title"], article["body"])
+                sentiment = analyze_article(article["title"], article["body"], client)
 
                 # Store results
                 article_result["scores"].append(sentiment.score)
@@ -308,7 +312,7 @@ def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
                     "article_index": i,
                     "shapiro_statistic": float(statistic),
                     "shapiro_p_value": float(p_value),
-                    "is_normal": p_value > 0.05
+                    "is_normal": int(p_value > 0.05)
                 })
             except Exception as e:
                 logger.warning(f"Could not perform Shapiro-Wilk test for article {i}: {e}")
@@ -317,7 +321,7 @@ def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
 
     # Overall normality assessment
     if normality_results:
-        normal_count = sum(1 for r in normality_results if r["is_normal"])
+        normal_count = sum(1 for r in normality_results if r["is_normal"] == 1)
         test_results["overall_normality"] = {
             "normal_articles": normal_count,
             "total_tested": len(normality_results),
@@ -458,6 +462,39 @@ def generate_visualizations(results: List[Dict], output_dir: Path):
         logger.info(f"Pie chart saved to {pie_chart_path}")
 
 
+def make_json_safe(obj):
+    """
+    Convert numpy types and other non-JSON-serializable objects to JSON-safe types.
+    Recursively processes dictionaries, lists, and other data structures.
+
+    Args:
+        obj: Object to make JSON-safe
+
+    Returns:
+        JSON-safe version of the object
+    """
+    import numpy as np
+
+    if obj is None:
+        return None
+    elif isinstance(obj, bool):
+        return int(obj)  # Convert boolean to int
+    elif isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+        if np.isnan(obj):
+            return None  # Convert NaN to null
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return make_json_safe(obj.tolist())
+    elif isinstance(obj, dict):
+        return {key: make_json_safe(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [make_json_safe(item) for item in obj]
+    else:
+        return obj
+
+
 def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
                 metadata: Dict, output_dir: Path):
     """
@@ -483,11 +520,37 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
         "article_results": results
     }
 
-    # Save JSON results
+    # Create debug dump file before JSON serialization
+    dump_path = output_dir / "debug_results_dump.pkl"
+    try:
+        with open(dump_path, 'wb') as f:
+            pickle.dump(full_results, f)
+        logger.info(f"Debug dump saved to {dump_path}")
+    except Exception as e:
+        logger.warning(f"Could not create debug dump: {e}")
+
+    # Save JSON results with error handling
     json_path = output_dir / "consistency_results.json"
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(full_results, f, indent=2, ensure_ascii=False)
-    logger.info(f"JSON results saved to {json_path}")
+    try:
+        # Make data JSON-safe
+        json_safe_results = make_json_safe(full_results)
+
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(json_safe_results, f, indent=2, ensure_ascii=False)
+        logger.info(f"JSON results saved to {json_path}")
+
+        # Remove debug dump if JSON save was successful
+        try:
+            os.remove(dump_path)
+            logger.debug("Debug dump removed after successful JSON save")
+        except OSError:
+            logger.debug("Could not remove debug dump file")
+
+    except (TypeError, ValueError) as e:
+        logger.error(f"JSON serialization failed: {e}")
+        logger.error(f"Debug dump preserved at: {dump_path}")
+        logger.error("Please examine the dump file to identify serialization issues")
+        raise
 
     # Save CSV summary
     if results:
