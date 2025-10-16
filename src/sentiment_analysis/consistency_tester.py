@@ -1195,6 +1195,10 @@ def format_overall_stats_html(stats: Dict) -> str:
             <div class="metric-value">{stats['avg_consistency_rate']:.1%}</div>
             <div class="metric-label">Avg Consistency Rate</div>
         </div>
+        <div class="metric">
+            <div class="metric-value">{stats['avg_range']:.3f}</div>
+            <div class="metric-label">Avg Score Range</div>
+        </div>
 
         <h3>Enhanced Metrics</h3>
         <div class="metric">
@@ -1266,9 +1270,12 @@ def format_article_results_html(articles: List[Dict]) -> str:
             rows += f"""
             <tr>
                 <td>{i + 1}</td>
-                <td><a href="{article['url']}" target="_blank">{article['title'][:60]}{'...' if len(article['title']) > 60 else ''}</a></td>
+                <td><a href="{article['url']}" target="_blank">{article['title'][:50]}{'...' if len(article['title']) > 50 else ''}</a></td>
                 <td>{stats['sample_size']}</td>
                 <td>{stats['mean']:.2f}</td>
+                <td>{stats['min']:.2f}</td>
+                <td>{stats['max']:.2f}</td>
+                <td>{stats['range']:.2f}</td>
                 <td>{stats['cv']:.3f}</td>
                 <td>{stats.get('frequency_weighted_cv', stats['cv']):.3f}</td>
                 <td>{robust_stats.get('robust_cv', stats['cv']):.3f}</td>
@@ -1287,11 +1294,14 @@ def format_article_results_html(articles: List[Dict]) -> str:
                 <th>Title</th>
                 <th>Sample Size</th>
                 <th>Mean</th>
+                <th>Min</th>
+                <th>Max</th>
+                <th>Range</th>
+                <th>Unique Values</th>
                 <th>Traditional CV</th>
                 <th>Frequency-Weighted CV</th>
                 <th>Robust CV</th>
                 <th>Mode Frequency</th>
-                <th>Unique Values</th>
                 <th>Traditional Classification</th>
                 <th>Enhanced Classification</th>
             </tr>
@@ -1367,6 +1377,7 @@ def main():
     logger.info(f"Average standard deviation: {overall_stats.get('avg_std_dev', 0):.3f}")
     logger.info(f"Average coefficient of variation: {overall_stats.get('avg_cv', 0):.3f}")
     logger.info(f"Average consistency rate: {overall_stats.get('avg_consistency_rate', 0):.1%}")
+    logger.info(f"Average score range: {overall_stats.get('avg_range', 0):.3f}")
 
     consistency_dist = overall_stats.get('consistency_distribution', {})
     overall_dist = overall_stats.get('overall_classification_distribution', {})
