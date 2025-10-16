@@ -247,6 +247,22 @@ def create_sentiment_chart(
             label=f'Discrete Average ({window_minutes} min bins)',
             zorder=4
         )
+
+        # Add vertical lines at bin boundaries for clarity
+        # Only show lines that are within the current data range
+        data_start = df['datetime'].min()
+        data_end = df['datetime'].max()
+
+        for boundary_time in step_times[1:-1]:  # Skip first and last to avoid edge clutter
+            if data_start <= boundary_time <= data_end:
+                ax.axvline(
+                    x=boundary_time,
+                    color='#CCCCCC',
+                    linestyle='--',
+                    linewidth=0.8,
+                    alpha=0.4,
+                    zorder=1
+                )
     else:
         # Fallback to regular line if step data not available
         ax.plot(
