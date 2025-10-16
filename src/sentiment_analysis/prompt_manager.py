@@ -47,26 +47,26 @@ def get_sentiment_analysis_prompt() -> str:
         Score: 1.5
         Reasoning: Major security breach undermines confidence in crypto infrastructure and may trigger panic selling. Exchange solvency concerns could create systemic risk. Likely to cause immediate negative price action.
 
-        Example 3:  
-        Title: "Square Enables First Bitcoin Payment at US Coffee Chain"
-        Body: "Square has enabled Compass Coffee as the first business to accept Bitcoin payments through Square's point-of-sale terminal. All 10 wallet tests succeeded at the coffee shop instantly as Square prepares worldwide rollout."
-        Analysis: Positive adoption news but relatively small scale. Real-world usage increasing, payment infrastructure improving. However, single merchant adoption has minimal market impact.
-        Score: 6.8
-        Reasoning: Real-world adoption milestone with successful payment processing, but limited immediate market impact. Shows improving payment infrastructure and merchant acceptance, supporting long-term bullish thesis.
+        Example 3:
+        Title: "Tech Giant IntegraSoft Announces Bitcoin Integration for Cloud Services"
+        Body: "IntegraSoft, the leading cloud infrastructure provider, announced today that customers can now pay for enterprise cloud services using Bitcoin. The integration will initially support 15 major enterprise clients with plans to expand to all customers by Q4 2025."
+        Analysis: Positive institutional adoption news with credible enterprise integration. Large tech company endorsement adds legitimacy and creates new use case for Bitcoin in B2B payments.
+        Score: 7.5
+        Reasoning: Major tech company's Bitcoin integration for enterprise services represents significant institutional validation and creates new demand channel. Enterprise adoption trends are constructive for long-term value, though immediate market impact may be moderate.
 
         Example 4:
-        Title: "Bitcoin Price Watch: Short-Term Charts Hint at Accumulation"
-        Body: "Bitcoin may be clinging just above the $111K ledge, but the charts are less interested in a party and more in plotting their next move—quietly, methodically, and with just a hint of drama. Technical indicators suggest accumulation phase."
-        Analysis: Technical analysis showing accumulation patterns. Generally constructive for price but lacks fundamental catalyst. Short-term bullish but need confirmation.
-        Score: 6.2
-        Reasoning: Technical indicators suggest accumulation and potential bullish setup, but lacks fundamental catalysts for significant price movement. Charts constructive but need volume confirmation for breakout.
+        Title: "Bitcoin Forms Golden Cross on Daily Chart, Traders Eye $125K Target"
+        Body: "Technical analysts note that Bitcoin's 50-day moving average has crossed above its 200-day moving average, forming a classic golden cross pattern. Trading volume has been steadily increasing over the past week, supporting the bullish technical formation."
+        Analysis: Strong bullish technical indicator with golden cross formation. However, technical patterns alone may not sustain upward movement without fundamental catalysts.
+        Score: 6.8
+        Reasoning: Golden cross is historically significant bullish indicator, especially when supported by increasing volume. However, technical patterns need fundamental confirmation for sustained price appreciation. Market structure favors bulls but requires catalyst validation.
 
         Example 5:
-        Title: "Bitcoin Holds $110K, But Traders Just Bet $1.15B on Crash to $104K"
-        Body: "Bitcoin institutional traders bet over $1.15 billion on downside protection in 24 hours with put options accounting for 28% of market transactions targeting $104,000 to $108,000 range."
-        Analysis: Large institutional hedging activity suggests smart money expecting downside. Significant options flow for downside protection. However, price still holding key levels creates mixed picture.
-        Score: 4.3
-        Reasoning: Heavy institutional positioning for downside protection suggests smart money anticipating price decline. Despite current price resilience, $1.15B in downside bets indicates institutional concern about near-term price action.
+        Title: "Federal Reserve Chairman Signals Cautious Stance on Digital Asset Regulation"
+        Body: "In a press conference today, the Federal Reserve Chairman emphasized the need for careful consideration of digital asset regulations, noting that while innovation is important, consumer protection and financial stability remain top priorities. Markets reacted negatively to the cautious tone."
+        Analysis: Regulatory uncertainty from top monetary authority creates negative sentiment. However, cautious approach is expected and doesn't indicate immediate restrictive actions.
+        Score: 4.7
+        Reasoning: Cautious regulatory stance from Fed Chairman increases uncertainty about future regulatory environment. While not explicitly negative, the lack of clear support creates near-term headwinds for market sentiment and institutional adoption timelines.
 
         Now analyze the given Bitcoin news article and provide your sentiment score and reasoning:
 
