@@ -1,51 +1,58 @@
 """
-Twitter/X Tweet Text Extraction
+Twitter/X Tweet Data Extraction
 
-A simple, reusable function to extract tweet text from Twitter/X URLs using Playwright.
+A simple, reusable function to extract tweet text, author, and datetime from Twitter/X URLs using Playwright.
 Based on Method 1 (inner_text) from the comparison script - proven to be reliable and fast.
 
 Usage:
-    from extract_tweet import extract_tweet_text
+    from extract_tweet import extract_tweet_data, extract_tweet_text
 
-    tweet_url = "https://x.com/user/status/123456789"
-    tweet_text = extract_tweet_text(tweet_url)
-    if tweet_text:
-        print(f"Tweet text: {tweet_text}")
+    # Enhanced version - returns structured data
+    tweet_data = extract_tweet_data("https://x.com/user/status/123456789")
+    if tweet_data:
+        print(f"Author: {tweet_data['author']}")
+        print(f"Time: {tweet_data['datetime']}")
+        print(f"Text: {tweet_data['text']}")
+
+    # Simple version - returns just text (backward compatible)
+    tweet_text = extract_tweet_text("https://x.com/user/status/123456789")
 """
 
 import time
 import traceback
-from typing import Optional
+from typing import Optional, Dict
 from playwright.sync_api import sync_playwright
 
 
-def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
+def extract_tweet_data(url: str, timeout: int = 30) -> Optional[Dict[str, str]]:
     """
-    Extract tweet text from Twitter/X URL using Playwright inner_text() method.
+    Extract tweet data (text, author, datetime) from Twitter/X URL using Playwright.
 
-    This function uses the proven Method 1 (inner_text) approach from the comparison
-    script, which was fast (0.01s), reliable, and consistently extracted clean text.
+    This function extends the proven Method 1 (inner_text) approach to also extract
+    author handle and datetime information alongside the tweet text.
 
     Args:
         url: Twitter/X post URL (e.g., "https://x.com/user/status/123456789")
         timeout: Maximum wait time in seconds (default: 30)
 
     Returns:
-        Tweet text as string, or None if extraction failed
+        Dictionary with tweet data:
+        {
+            'text': str,           # Tweet text content
+            'author': str,         # @username handle
+            'datetime': str,       # Date/time text
+            'url': str            # Original URL
+        }
+        or None if extraction failed
 
     Example:
-        >>> tweet_url = "https://x.com/MerlijnTrader/status/1979585766515761455"
-        >>> text = extract_tweet_text(tweet_url)
-        >>> print(text)
-        BREAKING:
-
-        CHINA JUST WENT ALL-IN ON BITCOIN.
-
-        XI JINPING ANNOUNCES A PLAN TO LEGALIZE & BUY $40 BILLION IN $BTC FOR THE NATIONAL CRYPTO RESERVE.
-
-        THE EAST JUST SHOOK THE GLOBAL MARKETS.
-
-        BITCOIN'S NEXT CHAPTER HAS BEGUN.
+        >>> tweet_data = extract_tweet_data("https://x.com/MerlijnTrader/status/1979585766515761455")
+        >>> print(tweet_data['author'])
+        @MerlijnTrader
+        >>> print(tweet_data['datetime'])
+        2:15 PM · Dec 15, 2024
+        >>> print(tweet_data['text'])
+        BREAKING: CHINA JUST WENT ALL-IN ON BITCOIN...
     """
 
     # Validate URL
@@ -106,46 +113,125 @@ def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
         # Wait for dynamic content
         page.wait_for_timeout(3000)
 
-        # Try multiple selectors for tweet text
-        tweet_selectors = [
-            '[data-testid="tweetText"]',
-            '[data-testid="tweet"] div[lang]',
-            'div[lang] span',
-            '.css-1dbjc4n div[lang]',
-            'div[lang]',
-            'article div[lang]'
+        # Find the main tweet container
+        tweet_container = None
+        tweet_container_selectors = [
+            '[data-testid="tweet"]',
+            'article[role="article"]',
+            '[data-testid="tweetDetail"]'
         ]
 
-        tweet_element = None
-        for selector in tweet_selectors:
+        for selector in tweet_container_selectors:
             try:
                 elements = page.locator(selector)
                 if elements.count() > 0:
-                    tweet_element = elements.first
-                    print(f"Found tweet with selector: {selector}")
+                    tweet_container = elements.first
+                    print(f"Found tweet container with selector: {selector}")
                     break
             except:
                 continue
 
-        if not tweet_element:
-            print("No tweet content found with known selectors")
+        if not tweet_container:
+            print("No tweet container found")
             return None
 
-        # Extract text using Method 1: inner_text()
+        # Initialize result
+        result = {
+            'text': None,
+            'author': None,
+            'datetime': None,
+            'url': url
+        }
+
+        # Extract tweet text
         print("Extracting tweet text...")
-        start_time = time.time()
-        tweet_text = tweet_element.inner_text()
-        end_time = time.time()
+        text_selectors = [
+            '[data-testid="tweetText"]',
+            'div[lang]',
+            '.css-1dbjc4n div[lang]',
+            'article div[lang]'
+        ]
 
-        # Clean up the result
-        tweet_text = tweet_text.strip()
+        for selector in text_selectors:
+            try:
+                text_element = tweet_container.locator(selector).first
+                if text_element.count() > 0:
+                    result['text'] = text_element.inner_text().strip()
+                    print(f"Found tweet text with selector: {selector}")
+                    break
+            except:
+                continue
 
-        print(f"Success! Extracted {len(tweet_text)} characters in {end_time - start_time:.2f}s")
+        # Extract author handle (@username)
+        print("Extracting author handle...")
+        author_selectors = [
+            '[data-testid="User-Name"] a[href*="/"] span',
+            '[data-testid="UserScreenName"]',
+            'a[href*="/"] span',
+            'div[data-testid="User-Name"] span'
+        ]
 
-        return tweet_text if tweet_text else None
+        for selector in author_selectors:
+            try:
+                author_elements = tweet_container.locator(selector).all()
+                for element in author_elements:
+                    author_text = element.inner_text().strip()
+                    # Look for @username format
+                    if author_text.startswith('@') and len(author_text) > 1:
+                        result['author'] = author_text
+                        print(f"Found author with selector: {selector}")
+                        break
+                if result['author']:
+                    break
+            except:
+                continue
+
+        # Extract datetime
+        print("Extracting datetime...")
+        datetime_selectors = [
+            'time',
+            '[data-testid="User-Name"] time',
+            'span[datetime]',
+            'a[href*="/status/"] time'
+        ]
+
+        for selector in datetime_selectors:
+            try:
+                datetime_elements = tweet_container.locator(selector).all()
+                for element in datetime_elements:
+                    # Try different ways to get datetime
+                    datetime_text = element.inner_text().strip()
+                    datetime_attr = element.get_attribute('datetime')
+
+                    # Prefer text content (usually shows human-readable format)
+                    if datetime_text and ('AM' in datetime_text or 'PM' in datetime_text or
+                                        any(month in datetime_text.upper() for month in
+                                           ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+                                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'])):
+                        result['datetime'] = datetime_text
+                        print(f"Found datetime with selector: {selector}")
+                        break
+                    # Fallback to datetime attribute
+                    elif datetime_attr:
+                        result['datetime'] = datetime_attr
+                        print(f"Found datetime attribute with selector: {selector}")
+                        break
+                if result['datetime']:
+                    break
+            except:
+                continue
+
+        # Print extraction results
+        print(f"Extraction complete:")
+        print(f"  Text: {len(result['text']) if result['text'] else 0} chars")
+        print(f"  Author: {result['author'] if result['author'] else 'Not found'}")
+        print(f"  DateTime: {result['datetime'] if result['datetime'] else 'Not found'}")
+
+        # Return result if we at least got the text
+        return result if result['text'] else None
 
     except Exception as e:
-        print(f"Error extracting tweet text: {str(e)}")
+        print(f"Error extracting tweet data: {str(e)}")
         traceback.print_exc()
         return None
 
@@ -159,25 +245,91 @@ def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
             playwright.stop()
 
 
+def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
+    """
+    Extract tweet text from Twitter/X URL using Playwright inner_text() method.
+
+    This function provides backward compatibility by using the enhanced extract_tweet_data()
+    function and returning just the text component.
+
+    Args:
+        url: Twitter/X post URL (e.g., "https://x.com/user/status/123456789")
+        timeout: Maximum wait time in seconds (default: 30)
+
+    Returns:
+        Tweet text as string, or None if extraction failed
+
+    Example:
+        >>> tweet_url = "https://x.com/MerlijnTrader/status/1979585766515761455"
+        >>> text = extract_tweet_text(tweet_url)
+        >>> print(text)
+        BREAKING:
+
+        CHINA JUST WENT ALL-IN ON BITCOIN.
+
+        XI JINPING ANNOUNCES A PLAN TO LEGALIZE & BUY $40 BILLION IN $BTC FOR THE NATIONAL CRYPTO RESERVE.
+
+        THE EAST JUST SHOOK THE GLOBAL MARKETS.
+
+        BITCOIN'S NEXT CHAPTER HAS BEGUN.
+    """
+
+    # Use the enhanced function and return just the text
+    tweet_data = extract_tweet_data(url, timeout)
+    return tweet_data['text'] if tweet_data else None
+
+
 # Example usage and testing
 if __name__ == "__main__":
     # Test with the previously successful URL
     test_url = "https://x.com/MerlijnTrader/status/1979585766515761455"
 
-    print("Testing tweet extraction function...")
-    print("=" * 50)
+    print("Testing enhanced tweet data extraction...")
+    print("=" * 60)
 
-    result = extract_tweet_text(test_url)
+    # Test the new enhanced function
+    print("\n1. Testing extract_tweet_data() - Enhanced version:")
+    print("-" * 50)
+    result = extract_tweet_data(test_url)
 
     if result:
-        print("✅ Extraction successful!")
-        print(f"Tweet text ({len(result)} chars):")
+        print("✅ Enhanced extraction successful!")
+        print(f"Author: {result['author']}")
+        print(f"DateTime: {result['datetime']}")
+        print(f"Tweet text ({len(result['text'])} chars):")
         print("-" * 30)
-        print(result)
+        print(result['text'])
         print("-" * 30)
     else:
-        print("❌ Extraction failed!")
+        print("❌ Enhanced extraction failed!")
 
-    print("\nYou can now use this function in your own code:")
+    # Test the backward-compatible function
+    print("\n2. Testing extract_tweet_text() - Simple version (backward compatible):")
+    print("-" * 50)
+    text_result = extract_tweet_text(test_url)
+
+    if text_result:
+        print("✅ Simple extraction successful!")
+        print(f"Tweet text ({len(text_result)} chars):")
+        print("-" * 30)
+        print(text_result)
+        print("-" * 30)
+    else:
+        print("❌ Simple extraction failed!")
+
+    print("\n" + "=" * 60)
+    print("USAGE EXAMPLES:")
+    print("=" * 60)
+    print("\n# Enhanced version - returns structured data:")
+    print("from extract_tweet import extract_tweet_data")
+    print("tweet_data = extract_tweet_data('https://x.com/user/status/123456789')")
+    print("if tweet_data:")
+    print("    print(f\"Author: {tweet_data['author']}\")")
+    print("    print(f\"Time: {tweet_data['datetime']}\")")
+    print("    print(f\"Text: {tweet_data['text']}\")")
+
+    print("\n# Simple version - returns just text (backward compatible):")
     print("from extract_tweet import extract_tweet_text")
     print("text = extract_tweet_text('https://x.com/user/status/123456789')")
+    print("if text:")
+    print("    print(f\"Tweet: {text}\")")
