@@ -20,38 +20,96 @@ Usage:
 
 import time
 import traceback
+import re
 from typing import Optional, Dict
 from playwright.sync_api import sync_playwright
 
 
-def extract_tweet_data(url: str, timeout: int = 30) -> Optional[Dict[str, str]]:
+def parse_engagement_count(text: str) -> int:
     """
-    Extract tweet data (text, author, datetime) from Twitter/X URL using Playwright.
+    Parse Twitter's engagement count strings into integers.
 
-    This function extends the proven Method 1 (inner_text) approach to also extract
-    author handle and datetime information alongside the tweet text.
+    Handles formats like:
+    - "1,234" → 1234
+    - "1.2K" → 1200
+    - "3.5M" → 3500000
+    - "Hundreds" → 100 (approximation)
+
+    Args:
+        text: Formatted count string from Twitter
+
+    Returns:
+        Integer count, or 0 if parsing fails
+    """
+    if not text:
+        return 0
+
+    text = text.strip().upper()
+
+    # Handle special cases
+    if "HUNDRED" in text:
+        return 100
+    elif "THOUSAND" in text:
+        return 1000
+    elif "MILLION" in text:
+        return 1000000
+
+    # Extract numbers using regex
+    match = re.search(r'([0-9,.]+)\s*([KM]?)', text)
+    if not match:
+        return 0
+
+    number_str = match.group(1).replace(',', '')
+    suffix = match.group(2)
+
+    try:
+        base_number = float(number_str)
+
+        if suffix == 'K':  # Thousands
+            return int(base_number * 1000)
+        elif suffix == 'M':  # Millions
+            return int(base_number * 1000000)
+        else:
+            return int(base_number)
+
+    except (ValueError, TypeError):
+        return 0
+
+
+def extract_tweet_data(url: str, timeout: int = 30) -> Optional[Dict[str, any]]:
+    """
+    Extract comprehensive tweet data from Twitter/X URL using Playwright.
+
+    This function extends the proven Method 1 (inner_text) approach to extract
+    tweet content, metadata, and engagement metrics.
 
     Args:
         url: Twitter/X post URL (e.g., "https://x.com/user/status/123456789")
         timeout: Maximum wait time in seconds (default: 30)
 
     Returns:
-        Dictionary with tweet data:
+        Dictionary with complete tweet data:
         {
             'text': str,           # Tweet text content
             'author': str,         # @username handle
             'datetime': str,       # Date/time text
-            'url': str            # Original URL
+            'url': str,           # Original URL
+            'likes': int,         # Number of likes
+            'comments': int,      # Number of comments
+            'bookmarks': int,     # Number of bookmarks
+            'retweets': int       # Number of retweets
         }
         or None if extraction failed
 
     Example:
         >>> tweet_data = extract_tweet_data("https://x.com/MerlijnTrader/status/1979585766515761455")
-        >>> print(tweet_data['author'])
+        >>> print(f"Author: {tweet_data['author']}")
         @MerlijnTrader
-        >>> print(tweet_data['datetime'])
-        2:15 PM · Dec 15, 2024
-        >>> print(tweet_data['text'])
+        >>> print(f"Time: {tweet_data['datetime']}")
+        6:30 PM · Oct 18, 2025
+        >>> print(f"Likes: {tweet_data['likes']}")
+        1234
+        >>> print(f"Text: {tweet_data['text']}")
         BREAKING: CHINA JUST WENT ALL-IN ON BITCOIN...
     """
 
@@ -140,7 +198,11 @@ def extract_tweet_data(url: str, timeout: int = 30) -> Optional[Dict[str, str]]:
             'text': None,
             'author': None,
             'datetime': None,
-            'url': url
+            'url': url,
+            'likes': 0,
+            'comments': 0,
+            'bookmarks': 0,
+            'retweets': 0
         }
 
         # Extract tweet text
@@ -221,11 +283,106 @@ def extract_tweet_data(url: str, timeout: int = 30) -> Optional[Dict[str, str]]:
             except:
                 continue
 
+        # Extract engagement metrics using inner_text() method
+        print("Extracting engagement metrics...")
+
+        # Helper function to extract engagement metrics using inner_text with improved validation
+        def extract_engagement_metric(metric_name: str, selectors: list, required_keywords: list) -> int:
+            print(f"Extracting {metric_name}...")
+            for selector in selectors:
+                try:
+                    elements = tweet_container.locator(selector).all()
+                    print(f"  Trying selector: {selector} (found {len(elements)} elements)")
+
+                    for i, element in enumerate(elements):
+                        # Try aria-label first (usually contains count with description)
+                        aria_label = element.get_attribute('aria-label')
+                        if aria_label:
+                            print(f"    Element {i+1} aria-label: '{aria_label}'")
+                            # Validate that aria-label contains required keywords
+                            aria_label_lower = aria_label.lower()
+                            if any(keyword.lower() in aria_label_lower for keyword in required_keywords):
+                                count = parse_engagement_count(aria_label)
+                                if count > 0:
+                                    print(f"✅ Found {metric_name} with selector: {selector} ({count})")
+                                    return count
+                            else:
+                                print(f"    ❌ aria-label doesn't contain required keywords: {required_keywords}")
+
+                        # Fallback to inner_text() method (proven reliable)
+                        text_content = element.inner_text().strip()
+                        if text_content:
+                            print(f"    Element {i+1} text_content: '{text_content}'")
+                            # Validate that text content contains required keywords
+                            text_lower = text_content.lower()
+                            if any(keyword.lower() in text_lower for keyword in required_keywords):
+                                count = parse_engagement_count(text_content)
+                                if count > 0:
+                                    print(f"✅ Found {metric_name} with selector: {selector} ({count})")
+                                    return count
+                            else:
+                                print(f"    ❌ text_content doesn't contain required keywords: {required_keywords}")
+                except Exception as e:
+                    print(f"    Error with selector {selector}: {str(e)}")
+                    continue
+            print(f"❌ No {metric_name} found")
+            return 0
+
+        # Extract likes (heart icon)
+        likes_selectors = [
+            '[data-testid="like"]',
+            '[data-testid="unlike"]',
+            '[aria-label*="Like"]',
+            '[aria-label*="like"]',
+            'div[role="button"][aria-label*="like"]',
+            'div[role="button"][data-testid="like"] span'
+        ]
+        result['likes'] = extract_engagement_metric('likes', likes_selectors, ['like', 'heart', 'favorite'])
+
+        # Extract comments/replies (speech bubble icon)
+        comments_selectors = [
+            '[data-testid="reply"]',
+            '[aria-label*="Reply"]',
+            '[aria-label*="repl"]',
+            '[aria-label*="comment"]',
+            'div[role="button"][aria-label*="reply"]',
+            'div[role="button"][data-testid="reply"] span'
+        ]
+        result['comments'] = extract_engagement_metric('comments', comments_selectors, ['reply', 'comment', 'repl'])
+
+        # Extract bookmarks (bookmark icon)
+        bookmarks_selectors = [
+            '[data-testid="bookmark"]',
+            '[data-testid="unbookmark"]',
+            '[aria-label*="Bookmark"]',
+            '[aria-label*="Save"]',
+            '[aria-label*="bookmark"]',
+            'div[role="button"][aria-label*="bookmark"]',
+            'div[role="button"][data-testid="bookmark"] span'
+        ]
+        result['bookmarks'] = extract_engagement_metric('bookmarks', bookmarks_selectors, ['bookmark', 'save', 'saved'])
+
+        # Extract retweets (retweet/recycle icon)
+        retweets_selectors = [
+            '[data-testid="retweet"]',
+            '[data-testid="unretweet"]',
+            '[aria-label*="Retweet"]',
+            '[aria-label*="retweet"]',
+            '[aria-label*="Share"]',
+            'div[role="button"][aria-label*="retweet"]',
+            'div[role="button"][data-testid="retweet"] span'
+        ]
+        result['retweets'] = extract_engagement_metric('retweets', retweets_selectors, ['retweet', 'share', 'repost'])
+
         # Print extraction results
         print(f"Extraction complete:")
         print(f"  Text: {len(result['text']) if result['text'] else 0} chars")
         print(f"  Author: {result['author'] if result['author'] else 'Not found'}")
         print(f"  DateTime: {result['datetime'] if result['datetime'] else 'Not found'}")
+        print(f"  Likes: {result['likes']}")
+        print(f"  Comments: {result['comments']}")
+        print(f"  Bookmarks: {result['bookmarks']}")
+        print(f"  Retweets: {result['retweets']}")
 
         # Return result if we at least got the text
         return result if result['text'] else None
@@ -282,7 +439,7 @@ def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
 # Example usage and testing
 if __name__ == "__main__":
     # Test with the previously successful URL
-    test_url = "https://x.com/MerlijnTrader/status/1979585766515761455"
+    test_url = "https://x.com/Ashcryptoreal/status/1979792615244742967"
 
     print("Testing enhanced tweet data extraction...")
     print("=" * 60)
@@ -296,6 +453,11 @@ if __name__ == "__main__":
         print("✅ Enhanced extraction successful!")
         print(f"Author: {result['author']}")
         print(f"DateTime: {result['datetime']}")
+        print(f"Engagement:")
+        print(f"  ❤️  Likes: {result['likes']}")
+        print(f"  💬 Comments: {result['comments']}")
+        print(f"  🔖 Bookmarks: {result['bookmarks']}")
+        print(f"  🔄 Retweets: {result['retweets']}")
         print(f"Tweet text ({len(result['text'])} chars):")
         print("-" * 30)
         print(result['text'])
@@ -320,12 +482,16 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("USAGE EXAMPLES:")
     print("=" * 60)
-    print("\n# Enhanced version - returns structured data:")
+    print("\n# Enhanced version - returns complete tweet data:")
     print("from extract_tweet import extract_tweet_data")
     print("tweet_data = extract_tweet_data('https://x.com/user/status/123456789')")
     print("if tweet_data:")
     print("    print(f\"Author: {tweet_data['author']}\")")
     print("    print(f\"Time: {tweet_data['datetime']}\")")
+    print("    print(f\"❤️  Likes: {tweet_data['likes']}\")")
+    print("    print(f\"💬 Comments: {tweet_data['comments']}\")")
+    print("    print(f\"🔖 Bookmarks: {tweet_data['bookmarks']}\")")
+    print("    print(f\"🔄 Retweets: {tweet_data['retweets']}\")")
     print("    print(f\"Text: {tweet_data['text']}\")")
 
     print("\n# Simple version - returns just text (backward compatible):")
