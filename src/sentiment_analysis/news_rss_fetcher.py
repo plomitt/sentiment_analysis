@@ -1,11 +1,12 @@
+from datetime import datetime
 import feedparser
+import argparse
+import calendar
+import logging
 import json
 import time
-import argparse
 import os
-import logging
-from datetime import datetime
-from dotenv import load_dotenv
+
 from searxng_search import searxng_search
 
 
@@ -48,7 +49,7 @@ def main():
                 "title": entry.title,
                 "url": entry.link,
                 "timestamp": entry.published,
-                "unix_timestamp": int(time.mktime(entry.published_parsed)),
+                "unix_timestamp": calendar.timegm(entry.published_parsed),
                 "source": entry.source.title
             }
 
