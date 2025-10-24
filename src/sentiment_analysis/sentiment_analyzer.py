@@ -11,9 +11,10 @@ from datetime import datetime
 import json
 import logging
 import os
+import glob
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
-from instructor import Instructor
+from instructor import Instructor, Mode
 
 from client_manager import build_client
 from prompt_manager import get_sentiment_analysis_prompt_with_context
@@ -50,7 +51,7 @@ class ArticleWithSentiment(BaseModel):
     """Article data with sentiment analysis."""
 
     title: str = Field(..., description="Article title")
-    body: str = Field(..., description="Article body content")
+    body: Optional[str] = Field(None, description="Article body content")
     timestamp: str = Field(..., description="Article timestamp")
     url: str = Field(..., description="Article URL")
     unix_timestamp: Optional[int] = Field(None, description="Unix timestamp for sorting and analysis")
@@ -64,18 +65,21 @@ def create_client() -> Instructor:
     Returns:
         Instructor: Configured client instance
     """
-    client = build_client()
+    config = {
+        "mode": Mode.JSON
+    }
+    client = build_client(config)
     logger.info("Instructor client created for sentiment analysis")
     return client
 
 
-def analyze_article(title: str, body: str, client: Optional[Instructor] = None) -> SentimentAnalysis:
+def analyze_article(title: str, body: Optional[str], client: Optional[Instructor] = None) -> SentimentAnalysis:
     """
     Analyze a single article for sentiment.
 
     Args:
         title: Article title
-        body: Article body content
+        body: Article body content (optional - can be None or empty)
         client: Instructor client instance. If None, creates default client.
 
     Returns:
@@ -84,9 +88,12 @@ def analyze_article(title: str, body: str, client: Optional[Instructor] = None) 
     if client is None:
         client = create_client()
 
+    # Handle None or empty body gracefully
+    body_content = body if body else ""
+
     try:
         # Get the formatted prompt
-        prompt = get_sentiment_analysis_prompt_with_context(title, body)
+        prompt = get_sentiment_analysis_prompt_with_context(title, body_content)
 
         # Use Instructor to get structured output
         sentiment = client.chat.completions.create(
@@ -133,7 +140,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
         try:
             # Extract article data
             title = article.get('title', '')
-            body = article.get('body', '')
+            body = article.get('body', '')  # Returns empty string if body field doesn't exist
             timestamp = article.get('timestamp', '')
             url = article.get('url', '')
             unix_timestamp = article.get('unix_timestamp')
@@ -144,7 +151,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
             # Create result object
             article_with_sentiment = ArticleWithSentiment(
                 title=title,
-                body=body,
+                body=body if body else None,  # Store None if body was empty/missing
                 timestamp=timestamp,
                 url=url,
                 unix_timestamp=unix_timestamp,
@@ -162,6 +169,83 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
 
     logger.info(f"Batch analysis complete. {len(results)} articles processed successfully")
     return results
+
+
+def find_latest_news_file(news_dir: str) -> Optional[str]:
+    """
+    Find the latest news file from the news directory.
+
+    Since news files are named with sortable prefixes for reverse chronological order,
+    the first file alphabetically is the newest.
+
+    Args:
+        news_dir: Path to the news directory
+
+    Returns:
+        Path to the latest news file, or None if no files found
+    """
+    try:
+        # Look for all news JSON files
+        pattern = os.path.join(news_dir, "news_*.json")
+        news_files = glob.glob(pattern)
+
+        if not news_files:
+            logger.error(f"No news files found in {news_dir}")
+            return None
+
+        # Sort alphabetically - with the new naming scheme, this puts newest first
+        news_files.sort()
+        latest_file = news_files[0]
+
+        logger.info(f"Found latest news file: {latest_file}")
+        return latest_file
+
+    except Exception as e:
+        logger.error(f"Error finding latest news file: {str(e)}")
+        return None
+
+
+def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
+    """
+    Extract timestamp from a news filename for use in output filename.
+
+    Expected format: news_[sortable]_[readable].json
+    Example: news_99998238678017_2025-10-24_18-06-22.json
+
+    Args:
+        filepath: Full path to the input news file
+
+    Returns:
+        Timestamp string (sortable_readable) or None if extraction fails
+    """
+    try:
+        filename = os.path.basename(filepath)
+
+        # Expected pattern: news_[sortable]_[readable].json
+        # Example: news_99998238678017_2025-10-24_18-06-22.json
+
+        if not (filename.startswith("news_") and filename.endswith(".json")):
+            logger.warning(f"Filename doesn't match expected pattern: {filename}")
+            return None
+
+        # Remove "news_" prefix and ".json" suffix
+        # From: "news_99998238678017_2025-10-24_18-06-22.json"
+        # To:   "99998238678017_2025-10-24_18-06-22"
+        timestamp_part = filename[5:-5]
+
+        # Validate that the timestamp part contains the expected format
+        # Should have at least one underscore (separating sortable and readable parts)
+        # The readable part should also contain underscores for date formatting
+        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
+            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            return None
+
+        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
+        return timestamp_part
+
+    except Exception as e:
+        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
+        return None
 
 
 def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
@@ -287,15 +371,38 @@ def main():
     # Get script directory to handle file paths correctly
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Define file paths relative to script location
-    input_file = os.path.join(script_dir, "news.json")
-    output_file = os.path.join(script_dir, "sentiments", "news_with_sentiment.json")
+    # Define directory paths
+    news_dir = os.path.join(script_dir, "news")
+    sentiments_dir = os.path.join(script_dir, "sentiments")
 
-    # Check if input file exists
-    if not os.path.exists(input_file):
-        print(f"❌ Error: Input file not found at {input_file}")
-        print("Please ensure news.json is in the same directory as sentiment_analyzer.py")
+    # Ensure directories exist
+    os.makedirs(news_dir, exist_ok=True)
+    os.makedirs(sentiments_dir, exist_ok=True)
+
+    # Find the latest news file
+    input_file = find_latest_news_file(news_dir)
+    if not input_file:
+        print("❌ Error: No news files found in src/sentiment_analysis/news/")
+        print("Please run the RSS fetcher first to generate news files.")
         return
+
+    # Try to extract timestamp from input filename for consistent tracking
+    extracted_timestamp = extract_timestamp_from_filename(input_file)
+
+    if extracted_timestamp:
+        # Use the same timestamp as the input file
+        output_filename = f"sentiments_{extracted_timestamp}.json"
+        print(f"📋 Using input timestamp: {extracted_timestamp}")
+    else:
+        # Fallback: generate new timestamp if extraction fails
+        print("⚠️  Could not extract timestamp from input filename, generating new timestamp")
+        now = datetime.now()
+        # Create sortable prefix: subtract from max timestamp to invert ordering
+        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        output_filename = f"sentiments_{sortable_timestamp}_{readable_timestamp}.json"
+
+    output_file = os.path.join(sentiments_dir, output_filename)
 
     # Run analysis
     print(f"📁 Input file: {input_file}")

@@ -7,6 +7,7 @@ by running multiple iterations and using statistical measures to quantify reliab
 """
 
 import argparse
+import glob
 import json
 import logging
 import os
@@ -14,9 +15,10 @@ import pickle
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import time
 
+from instructor import Mode
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -42,6 +44,83 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def find_latest_news_file(news_dir: str) -> Optional[str]:
+    """
+    Find the latest news file from the news directory.
+
+    Since news files are named with sortable prefixes for reverse chronological order,
+    the first file alphabetically is the newest.
+
+    Args:
+        news_dir: Path to the news directory
+
+    Returns:
+        Path to the latest news file, or None if no files found
+    """
+    try:
+        # Look for all news JSON files
+        pattern = os.path.join(news_dir, "news_*.json")
+        news_files = glob.glob(pattern)
+
+        if not news_files:
+            logger.error(f"No news files found in {news_dir}")
+            return None
+
+        # Sort alphabetically - with the new naming scheme, this puts newest first
+        news_files.sort()
+        latest_file = news_files[0]
+
+        logger.info(f"Found latest news file: {latest_file}")
+        return latest_file
+
+    except Exception as e:
+        logger.error(f"Error finding latest news file: {str(e)}")
+        return None
+
+
+def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
+    """
+    Extract timestamp from a news filename for use in output filename.
+
+    Expected format: news_[sortable]_[readable].json
+    Example: news_99998238678017_2025-10-24_18-06-22.json
+
+    Args:
+        filepath: Full path to the input news file
+
+    Returns:
+        Timestamp string (sortable_readable) or None if extraction fails
+    """
+    try:
+        filename = os.path.basename(filepath)
+
+        # Expected pattern: news_[sortable]_[readable].json
+        # Example: news_99998238678017_2025-10-24_18-06-22.json
+
+        if not (filename.startswith("news_") and filename.endswith(".json")):
+            logger.warning(f"Filename doesn't match expected pattern: {filename}")
+            return None
+
+        # Remove "news_" prefix and ".json" suffix
+        # From: "news_99998238678017_2025-10-24_18-06-22.json"
+        # To:   "99998238678017_2025-10-24_18-06-22"
+        timestamp_part = filename[5:-5]  # "news_" is 5 chars, ".json" is 5 chars
+
+        # Validate that the timestamp part contains the expected format
+        # Should have at least one underscore (separating sortable and readable parts)
+        # The readable part should also contain underscores for date formatting
+        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
+            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            return None
+
+        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
+        return timestamp_part
+
+    except Exception as e:
+        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
+        return None
+
+
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -56,8 +135,13 @@ def parse_arguments():
     parser.add_argument(
         "--input",
         type=str,
-        default="src/sentiment_analysis/sentiments/news_with_sentiment.json",
-        help="Input JSON file containing articles to analyze (default: src/sentiment_analysis/sentiments/news_with_sentiment.json)"
+        help="Input JSON file containing articles to analyze (optional - auto-detects from news directory if not provided)"
+    )
+    parser.add_argument(
+        "--news-dir",
+        type=str,
+        default="src/sentiment_analysis/news",
+        help="Directory containing news articles (default: src/sentiment_analysis/news)"
     )
     parser.add_argument(
         "--output-dir",
@@ -86,8 +170,14 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
     Returns:
         List of article results with multiple sentiment scores
     """
+
     logger.info(f"Starting data collection: {len(articles)} articles × {iterations} iterations")
 
+    config = {
+        "mode": Mode.JSON
+    }
+    client = build_client(config)
+    
     results = []
 
     for i, article in enumerate(articles, 1):
@@ -95,7 +185,7 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
 
         article_result = {
             "title": article["title"],
-            "body": article["body"],
+            "body": article.get("body", ""),  # Handle missing body field gracefully
             "timestamp": article["timestamp"],
             "url": article["url"],
             "unix_timestamp": article.get("unix_timestamp"),
@@ -104,14 +194,12 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
             "run_timestamps": []
         }
 
-        client = build_client()
-
         for iteration in range(iterations):
             try:
                 logger.info(f"  Running iteration {iteration + 1}/{iterations}")
 
                 # Run sentiment analysis
-                sentiment = analyze_article(article["title"], article["body"], client)
+                sentiment = analyze_article(article["title"], article.get("body", ""), client)
 
                 # Store results
                 article_result["scores"].append(sentiment.score)
@@ -608,13 +696,14 @@ def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
     return test_results
 
 
-def generate_visualizations(results: List[Dict], output_dir: Path):
+def generate_visualizations(results: List[Dict], output_dir: Path, output_timestamp: str):
     """
     Generate visualization charts.
 
     Args:
         results: List of article results with statistics
         output_dir: Directory to save charts
+        output_timestamp: Timestamp string for file naming
     """
     logger.info("Generating visualizations...")
 
@@ -700,7 +789,7 @@ def generate_visualizations(results: List[Dict], output_dir: Path):
     plt.tight_layout()
 
     # Save the plot
-    chart_path = output_dir / "consistency_charts.png"
+    chart_path = output_dir / f"consistency_charts_{output_timestamp}.png"
     plt.savefig(chart_path, dpi=300, bbox_inches='tight')
     plt.close()
 
@@ -732,23 +821,24 @@ def generate_visualizations(results: List[Dict], output_dir: Path):
 
         plt.tight_layout()
 
-        pie_chart_path = output_dir / "consistency_classification_pie.png"
+        pie_chart_path = output_dir / f"consistency_classification_pie_{output_timestamp}.png"
         plt.savefig(pie_chart_path, dpi=300, bbox_inches='tight')
         plt.close()
 
         logger.info(f"Pie chart saved to {pie_chart_path}")
 
     # Generate enhanced visualizations
-    generate_enhanced_visualizations(articles_with_stats, output_dir)
+    generate_enhanced_visualizations(articles_with_stats, output_dir, output_timestamp)
 
 
-def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir: Path):
+def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir: Path, output_timestamp: str):
     """
     Generate enhanced visualization charts with frequency analysis.
 
     Args:
         articles_with_stats: List of article results with statistics
         output_dir: Directory to save charts
+        output_timestamp: Timestamp string for file naming
     """
     logger.info("Generating enhanced visualizations...")
 
@@ -825,23 +915,24 @@ def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir
     plt.tight_layout()
 
     # Save the enhanced plot
-    enhanced_chart_path = output_dir / "enhanced_consistency_charts.png"
+    enhanced_chart_path = output_dir / f"enhanced_consistency_charts_{output_timestamp}.png"
     plt.savefig(enhanced_chart_path, dpi=300, bbox_inches='tight')
     plt.close()
 
     logger.info(f"Enhanced charts saved to {enhanced_chart_path}")
 
     # Create enhanced classification comparison pie charts
-    create_enhanced_classification_charts(articles_with_stats, output_dir)
+    create_enhanced_classification_charts(articles_with_stats, output_dir, output_timestamp)
 
 
-def create_enhanced_classification_charts(articles_with_stats: List[Dict], output_dir: Path):
+def create_enhanced_classification_charts(articles_with_stats: List[Dict], output_dir: Path, output_timestamp: str):
     """
     Create comparison pie charts for traditional vs enhanced classifications.
 
     Args:
         articles_with_stats: List of article results with statistics
         output_dir: Directory to save charts
+        output_timestamp: Timestamp string for file naming
     """
     # Traditional classification counts
     traditional_counts = {
@@ -891,7 +982,7 @@ def create_enhanced_classification_charts(articles_with_stats: List[Dict], outpu
 
         plt.tight_layout()
 
-        comparison_chart_path = output_dir / "classification_comparison.png"
+        comparison_chart_path = output_dir / f"classification_comparison_{output_timestamp}.png"
         plt.savefig(comparison_chart_path, dpi=300, bbox_inches='tight')
         plt.close()
 
@@ -965,8 +1056,11 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
     except Exception as e:
         logger.warning(f"Could not create debug dump: {e}")
 
+    # Get timestamp from metadata for file naming
+    output_timestamp = metadata.get("input_timestamp", "results")
+
     # Save JSON results with error handling
-    json_path = output_dir / "consistency_results.json"
+    json_path = output_dir / f"consistency_{output_timestamp}.json"
     try:
         # Make data JSON-safe
         json_safe_results = make_json_safe(full_results)
@@ -1028,15 +1122,15 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
 
         if csv_data:
             df = pd.DataFrame(csv_data)
-            csv_path = output_dir / "consistency_summary.csv"
+            csv_path = output_dir / f"consistency_summary_{output_timestamp}.csv"
             df.to_csv(csv_path, index=False, encoding='utf-8')
             logger.info(f"CSV summary saved to {csv_path}")
 
     # Generate and save HTML report
     generate_html_report(full_results, output_dir)
 
-    # Generate visualizations
-    generate_visualizations(results, output_dir)
+    # Generate visualizations with timestamp
+    generate_visualizations(results, output_dir, output_timestamp)
 
 
 def generate_html_report(results: Dict, output_dir: Path):
@@ -1047,6 +1141,8 @@ def generate_html_report(results: Dict, output_dir: Path):
         results: Full results dictionary
         output_dir: Directory to save HTML report
     """
+    # Get timestamp from metadata for file naming
+    output_timestamp = results.get("metadata", {}).get("input_timestamp", "report")
     html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -1137,20 +1233,20 @@ def generate_html_report(results: Dict, output_dir: Path):
     <div class="section">
         <h2>Traditional Analysis Visualizations</h2>
         <div class="chart">
-            <img src="consistency_charts.png" alt="Consistency Charts">
+            <img src="consistency_charts_{output_timestamp}.png" alt="Consistency Charts">
         </div>
         <div class="chart">
-            <img src="consistency_classification_pie.png" alt="Consistency Classification">
+            <img src="consistency_classification_pie_{output_timestamp}.png" alt="Consistency Classification">
         </div>
     </div>
 
     <div class="section">
         <h2>Enhanced Frequency Analysis Visualizations</h2>
         <div class="chart">
-            <img src="enhanced_consistency_charts.png" alt="Enhanced Consistency Charts with Frequency Analysis">
+            <img src="enhanced_consistency_charts_{output_timestamp}.png" alt="Enhanced Consistency Charts with Frequency Analysis">
         </div>
         <div class="chart">
-            <img src="classification_comparison.png" alt="Traditional vs Enhanced Classification Comparison">
+            <img src="classification_comparison_{output_timestamp}.png" alt="Traditional vs Enhanced Classification Comparison">
         </div>
         <p><strong>Enhanced Analysis:</strong> These charts incorporate frequency-weighted metrics that consider how often specific scores occur, providing a more nuanced view of consistency.</p>
     </div>
@@ -1163,7 +1259,7 @@ def generate_html_report(results: Dict, output_dir: Path):
 </html>
     """
 
-    html_path = output_dir / "consistency_report.html"
+    html_path = output_dir / f"consistency_report_{output_timestamp}.html"
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
@@ -1318,22 +1414,39 @@ def main():
     """Main function to run the consistency test."""
     args = parse_arguments()
 
+    # Determine input file
+    if args.input:
+        # Manual file specified
+        input_file = args.input
+        logger.info(f"📁 Using manually specified input file: {input_file}")
+    else:
+        # Auto-detect latest news file
+        logger.info("🔍 Auto-detecting latest news file...")
+        latest_file = find_latest_news_file(args.news_dir)
+        if not latest_file:
+            logger.error("❌ Error: No news files found in src/sentiment_analysis/news/")
+            logger.error("Please run the RSS fetcher first to generate news files.")
+            sys.exit(1)
+        input_file = latest_file
+
     # Validate input file exists
-    if not os.path.exists(args.input):
-        logger.error(f"Input file not found: {args.input}")
+    if not os.path.exists(input_file):
+        logger.error(f"❌ Input file not found: {input_file}")
         sys.exit(1)
 
-    # Load articles
-    logger.info(f"Loading articles from {args.input}")
-    articles = load_articles_from_json(args.input)
+    # Load articles from news file
+    logger.info(f"Loading articles from {input_file}")
+    articles = load_articles_from_json(input_file)
 
     if not articles:
-        logger.error("No articles found in input file")
+        logger.error("❌ No articles found in input file")
         sys.exit(1)
 
-    logger.info(f"Loaded {len(articles)} articles")
+    logger.info(f"✅ Loaded {len(articles)} articles")
 
     # Collect sentiment data
+    print(f"📁 Input file: {input_file}")
+    print()
     results = collect_sentiment_data(articles, args.iterations, args.timeout)
 
     # Calculate statistics for each article
@@ -1352,6 +1465,32 @@ def main():
     # Perform statistical tests
     test_results = perform_statistical_tests(scores_list)
 
+    # Generate output timestamp and directory using timestamp from input file
+    extracted_timestamp = extract_timestamp_from_filename(input_file)
+
+    if extracted_timestamp:
+        # Use the same timestamp as the input file
+        timestamp = extracted_timestamp
+        subfolder_name = f"consistency_{timestamp}"
+        logger.info(f"📋 Using input timestamp: {timestamp}")
+    else:
+        # Fallback: generate new timestamp if extraction fails
+        logger.warning("⚠️  Could not extract timestamp from input filename, generating new timestamp")
+        now = datetime.now()
+        # Create sortable prefix: subtract from max timestamp to invert ordering
+        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = f"{sortable_timestamp}_{readable_timestamp}"
+        subfolder_name = f"consistency_{timestamp}"
+
+    # Create output directory with timestamped subfolder
+    base_output_dir = Path(args.output_dir)
+    output_dir = base_output_dir / subfolder_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"📁 Output directory: {output_dir}")
+    print()
+
     # Prepare metadata
     metadata = {
         "timestamp": datetime.now().isoformat(),
@@ -1359,12 +1498,10 @@ def main():
         "total_articles": len(articles),
         "model": "ibm/granite-4-h-tiny",
         "temperature": 0.1,
-        "input_file": args.input,
+        "input_file": input_file,
+        "input_timestamp": timestamp,
         "timeout_between_calls": args.timeout
     }
-
-    # Create output directory
-    output_dir = Path(args.output_dir)
 
     # Save results
     save_results(results, overall_stats, test_results, metadata, output_dir)
@@ -1398,13 +1535,14 @@ def main():
     logger.info(f"  Average mode frequency: {overall_stats.get('avg_mode_frequency', 0):.1%}")
 
     logger.info("=" * 60)
-    logger.info("Results saved to:")
-    logger.info(f"  • JSON: {output_dir}/consistency_results.json")
-    logger.info(f"  • CSV: {output_dir}/consistency_summary.csv")
-    logger.info(f"  • HTML: {output_dir}/consistency_report.html")
-    logger.info(f"  • Traditional Charts: {output_dir}/consistency_charts.png")
-    logger.info(f"  • Enhanced Charts: {output_dir}/enhanced_consistency_charts.png")
-    logger.info(f"  • Classification Comparison: {output_dir}/classification_comparison.png")
+    logger.info(f"📁 Results saved to timestamped subfolder: {output_dir}")
+    logger.info("Generated files:")
+    logger.info(f"  • JSON: consistency_{timestamp}.json")
+    logger.info(f"  • CSV: consistency_summary_{timestamp}.csv")
+    logger.info(f"  • HTML: consistency_report_{timestamp}.html")
+    logger.info(f"  • Traditional Charts: consistency_charts_{timestamp}.png")
+    logger.info(f"  • Enhanced Charts: enhanced_consistency_charts_{timestamp}.png")
+    logger.info(f"  • Classification Comparison: classification_comparison_{timestamp}.png")
     logger.info("=" * 60)
 
 

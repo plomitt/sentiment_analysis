@@ -7,15 +7,22 @@ Supports rolling averages, time window filtering, and multi-chart output for lar
 """
 
 import argparse
+import glob
 import json
+import logging
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def ensure_directory(directory_path: str) -> Path:
@@ -23,6 +30,83 @@ def ensure_directory(directory_path: str) -> Path:
     path = Path(directory_path)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def find_latest_sentiment_file(sentiments_dir: str) -> Optional[str]:
+    """
+    Find the latest sentiment file from the sentiments directory.
+
+    Since sentiment files are named with sortable prefixes for reverse chronological order,
+    the first file alphabetically is the newest.
+
+    Args:
+        sentiments_dir: Path to the sentiments directory
+
+    Returns:
+        Path to the latest sentiment file, or None if no files found
+    """
+    try:
+        # Look for all sentiment JSON files
+        pattern = os.path.join(sentiments_dir, "sentiments_*.json")
+        sentiment_files = glob.glob(pattern)
+
+        if not sentiment_files:
+            logger.error(f"No sentiment files found in {sentiments_dir}")
+            return None
+
+        # Sort alphabetically - with the new naming scheme, this puts newest first
+        sentiment_files.sort()
+        latest_file = sentiment_files[0]
+
+        logger.info(f"Found latest sentiment file: {latest_file}")
+        return latest_file
+
+    except Exception as e:
+        logger.error(f"Error finding latest sentiment file: {str(e)}")
+        return None
+
+
+def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
+    """
+    Extract timestamp from a sentiment filename for use in output filename.
+
+    Expected format: sentiments_[sortable]_[readable].json
+    Example: sentiments_99998238678017_2025-10-24_18-06-22.json
+
+    Args:
+        filepath: Full path to the input sentiment file
+
+    Returns:
+        Timestamp string (sortable_readable) or None if extraction fails
+    """
+    try:
+        filename = os.path.basename(filepath)
+
+        # Expected pattern: sentiments_[sortable]_[readable].json
+        # Example: sentiments_99998238678017_2025-10-24_18-06-22.json
+
+        if not (filename.startswith("sentiments_") and filename.endswith(".json")):
+            logger.warning(f"Filename doesn't match expected pattern: {filename}")
+            return None
+
+        # Remove "sentiments_" prefix and ".json" suffix
+        # From: "sentiments_99998238678017_2025-10-24_18-06-22.json"
+        # To:   "99998238678017_2025-10-24_18-06-22"
+        timestamp_part = filename[11:-5]  # "sentiments_" is 11 chars (including underscore), ".json" is 5 chars
+
+        # Validate that the timestamp part contains the expected format
+        # Should have at least one underscore (separating sortable and readable parts)
+        # The readable part should also contain underscores for date formatting
+        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
+            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            return None
+
+        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
+        return timestamp_part
+
+    except Exception as e:
+        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
+        return None
 
 
 def load_sentiment_data(json_file: str) -> pd.DataFrame:
@@ -404,22 +488,22 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
             Examples:
-            python -m sentiment_analysis.sentiment_grapher src/sentiment_analysis/news_with_sentiment.json
-            python -m sentiment_analysis.sentiment_grapher data.json --interval-minutes all
-            python -m sentiment_analysis.sentiment_grapher data.json --window-minutes 10 --interval-minutes 120
+            python -m sentiment_analysis.sentiment_grapher  # Auto-detect latest sentiment file
+            python -m sentiment_analysis.sentiment_grapher --input-file custom.json  # Manual file
+            python -m sentiment_analysis.sentiment_grapher --interval-minutes all
+            python -m sentiment_analysis.sentiment_grapher --window-minutes 10 --interval-minutes 120
         """
     )
 
     parser.add_argument(
-        '--input_file',
-        default='news_with_sentiment.json',
-        help='Path to JSON file containing sentiment analysis data'
+        '--input-file',
+        help='Path to JSON file containing sentiment analysis data (optional - auto-detects if not provided)'
     )
 
     parser.add_argument(
-        '--input_dir',
+        '--input-dir',
         default='src/sentiment_analysis/sentiments/',
-        help='Path to JSON file containing sentiment analysis data'
+        help='Directory containing sentiment analysis files (default: src/sentiment_analysis/sentiments/)'
     )
 
     parser.add_argument(
@@ -479,10 +563,47 @@ def main():
             except ValueError:
                 parser.error("interval_minutes must be a number, 'all', or 0")
 
+        # Determine input file
+        if args.input_file:
+            # Manual file specified
+            input_file = args.input_file
+            print(f"📁 Using manually specified input file: {input_file}")
+        else:
+            # Auto-detect latest sentiment file
+            print("🔍 Auto-detecting latest sentiment file...")
+            latest_file = find_latest_sentiment_file(args.input_dir)
+            if not latest_file:
+                print("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
+                print("Please run the sentiment analyzer first to generate sentiment files.")
+                return
+            input_file = latest_file
+
+        # Ensure charts directory exists
+        charts_dir = args.output_dir
+        ensure_directory(charts_dir)
+
+        # Generate output filename using timestamp from input file
+        extracted_timestamp = extract_timestamp_from_filename(input_file)
+
+        if extracted_timestamp:
+            # Use the same timestamp as the input file
+            output_filename = f"chart_{extracted_timestamp}.png"
+            print(f"📋 Using input timestamp: {extracted_timestamp}")
+        else:
+            # Fallback: generate new timestamp if extraction fails
+            print("⚠️  Could not extract timestamp from input filename, generating new timestamp")
+            now = datetime.now()
+            # Create sortable prefix: subtract from max timestamp to invert ordering
+            sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+            readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+            output_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
+
+        # Update output argument
+        output_path = os.path.join(charts_dir, output_filename)
+
         # Load and process data
         print("Loading sentiment data...")
-        file_path = args.input_dir + args.input_file
-        df = load_sentiment_data(file_path)
+        df = load_sentiment_data(input_file)
 
         print("Converting timestamps...")
         df = convert_timestamps(df)
@@ -498,16 +619,20 @@ def main():
         processed_df = calculate_discrete_rolling_average(filtered_df, args.window_minutes)
 
         print("Creating charts...")
+        print(f"📁 Input file: {input_file}")
+        print(f"📁 Output file: {output_path}")
+        print()
+
         create_multiple_charts(
             processed_df,
-            args.output,
+            output_path,
             args.max_points,
             args.title,
             args.dpi,
-            args.output_dir
+            charts_dir
         )
 
-        print("Done!")
+        print(f"\n✅ Chart generation complete! Chart saved to {output_path}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
