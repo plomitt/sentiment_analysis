@@ -439,7 +439,7 @@ def extract_tweet_text(url: str, timeout: int = 30) -> Optional[str]:
 # Example usage and testing
 if __name__ == "__main__":
     # Test with the previously successful URL
-    test_url = "https://x.com/Ashcryptoreal/status/1979792615244742967"
+    test_url = "https://x.com/Jasminetrder/status/1980347321708888186"
 
     print("Testing enhanced tweet data extraction...")
     print("=" * 60)

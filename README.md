@@ -10,6 +10,7 @@ A sophisticated sentiment analysis system for Bitcoin news articles using Instru
 - **Batch Processing**: Efficiently analyze multiple articles
 - **Detailed Reasoning**: Each score includes concise trading-focused explanations
 - **Functional Design**: Simple, stateless functions without unnecessary class overhead
+- **Twitter/X Integration**: Browser state storage for authenticated Twitter data access
 
 ## Project Structure
 
@@ -21,6 +22,12 @@ src/sentiment_analysis/
 ├── demo.py                   # Demonstration script
 ├── news.json                 # Input news articles
 └── news_with_sentiment.json  # Output with sentiment analysis
+
+twitter_auth/
+├── twitter_auth.py            # Twitter/X authentication with browser state storage
+├── demo_manual_setup.py      # Manual authentication setup script
+├── README.md                 # Twitter authentication documentation
+└── .auth/                    # Authentication state storage (excluded from git)
 ```
 
 ## Installation
@@ -45,6 +52,10 @@ OPENROUTER_MODEL_ID=anthropic/claude-3-haiku
 LMSTUDIO_BASE_URL=http://localhost:1234/v1
 LMSTUDIO_API_KEY=123
 LMSTUDIO_MODEL_ID=your_model_here
+
+# Twitter/X Authentication
+TWITTER_EMAIL=your_twitter_email
+TWITTER_PASSWORD=your_twitter_password
 
 USE_LMSTUDIO=false
 ```
@@ -128,6 +139,36 @@ results = analyze_articles_batch(articles)
 
 # Complete pipeline
 success = analyze_news_file('news.json', 'results.json')
+```
+
+## Twitter/X Integration
+
+The system includes browser state storage for authenticated Twitter/X access, enabling extraction of live Bitcoin-related tweets and sentiment data.
+
+### Quick Start with Twitter Authentication
+
+```bash
+# Manual setup (recommended for first-time use)
+poetry run python twitter_auth/demo_manual_setup.py
+
+# Automated usage (after initial setup)
+from twitter_auth import get_authenticated_search_results
+content = get_authenticated_search_results()
+```
+
+### Twitter Authentication Features
+
+- **Browser State Persistence**: Save and reuse authenticated browser sessions
+- **Anti-Detection Measures**: Stealth browser configuration and human-like interaction
+- **Automatic Validation**: Verify authentication status before accessing protected content
+- **Secure Storage**: Authentication state stored securely and excluded from version control
+
+### Detailed Setup
+
+For complete Twitter/X authentication setup and usage instructions, see:
+
+```
+twitter_auth/README.md  # Comprehensive documentation and usage guide
 ```
 
 ## Sentiment Score Framework

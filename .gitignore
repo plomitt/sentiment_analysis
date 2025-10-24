@@ -213,3 +213,6 @@ __marimo__/
 src/sentiment_analysis/sentiments
 src/sentiment_analysis/charts
 src/sentiment_analysis/consistency
+
+# Twitter/X authentication state files (contain sensitive session data)
+twitter_auth/.auth/
