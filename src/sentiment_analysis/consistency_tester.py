@@ -34,7 +34,7 @@ except ImportError:
 
 # Import the existing sentiment analyzer
 from sentiment_analysis.client_manager import build_client
-from sentiment_analyzer import analyze_article, load_articles_from_json
+from sentiment_analysis.sentiment_analyzer import analyze_article, load_articles_from_json
 
 # Set up logging
 logging.basicConfig(

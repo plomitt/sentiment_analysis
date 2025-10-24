@@ -16,8 +16,8 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from instructor import Instructor, Mode
 
-from client_manager import build_client
-from prompt_manager import get_sentiment_analysis_prompt_with_context
+from sentiment_analysis.client_manager import build_client
+from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

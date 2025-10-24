@@ -7,7 +7,7 @@ import json
 import time
 import os
 
-from searxng_search import searxng_search
+from sentiment_analysis.searxng_search import searxng_search
 
 
 def main():
