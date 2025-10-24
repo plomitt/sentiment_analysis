@@ -175,17 +175,18 @@ def searxng_search(
     Raises:
         Exception: If the request to SearXNG fails.
     """
+    load_dotenv()
+    final_base_url = base_url or os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
+
     with ThreadPoolExecutor() as executor:
-        return executor.submit(asyncio.run, searxng_search_async(queries, base_url, category, max_results)).result()
+        return executor.submit(asyncio.run, searxng_search_async(queries, final_base_url, category, max_results)).result()
 
 __all__ = ["searxng_search"]
 
 if __name__ == "__main__":
     # Example usage
-    load_dotenv()
     results = searxng_search(
         queries=["weather in paris", "what is paris known for"],
-        base_url=os.getenv("SEARXNG_BASE_URL", "http://localhost:8080"),
         max_results=2
     )
 

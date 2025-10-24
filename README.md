@@ -95,6 +95,32 @@ poetry run python src/sentiment_analysis/news_rss_fetcher.py --count 20
 
 This fetches the latest 20 Bitcoin news articles and saves them to `src/sentiment_analysis/news/` with a timestamped filename.
 
+#### Advanced News Fetching with Content
+
+The news fetcher can optionally fetch full article content using SearXNG search:
+
+```bash
+# Fetch with article content (requires SearXNG instance)
+poetry run python src/sentiment_analysis/news_rss_fetcher.py --count 10 --searxng-url "https://your-searxng-instance.com"
+
+# Fetch without content (faster, default behavior)
+poetry run python src/sentiment_analysis/news_rss_fetcher.py --count 10 --no-content
+
+# Custom delay between requests (be respectful to SearXNG instance)
+poetry run python src/sentiment_analysis/news_rss_fetcher.py --count 10 --request-delay 2.0
+```
+
+**Content Fetching Features:**
+- **SearXNG Integration**: Uses article titles as search queries to find full content
+- **Rate Limiting**: Configurable delays between requests to respect SearXNG instances
+- **Error Handling**: Graceful fallback when content fetching fails
+- **Backward Compatibility**: Works with or without content fetching
+
+**Configuration:**
+- Set `SEARXNG_BASE_URL` environment variable or use `--searxng-url` flag
+- Default: `http://localhost:8080` (local SearXNG instance)
+- Use `--no-content` to disable content fetching for faster execution
+
 ### 2. Analyze Sentiment
 
 ```bash
@@ -149,6 +175,9 @@ LMSTUDIO_MODEL_ID=your_model_here
 
 # Choose provider: "openrouter" or "lmstudio"
 USE_LMSTUDIO=false
+
+# SearXNG Configuration (for article content fetching)
+SEARXNG_BASE_URL=http://localhost:8080
 ```
 
 ### Getting API Keys
@@ -178,7 +207,8 @@ Each news article contains:
   "url": "Article URL",
   "timestamp": "Publication timestamp",
   "unix_timestamp": 1735089382,
-  "source": "News Source Name"
+  "source": "News Source Name",
+  "body": "Full article content fetched via SearXNG (optional, may be empty)"
 }
 ```
 
@@ -256,6 +286,7 @@ The system includes comprehensive error handling:
 - `scipy`: Advanced statistical functions and scientific computing
 - `statsmodels`: Statistical modeling and analysis
 - `feedparser`: RSS feed parsing for news collection
+- `aiohttp`: Asynchronous HTTP client for SearXNG search integration
 
 Note: `openai` is automatically included as a dependency of `instructor`.
 

@@ -17,6 +17,7 @@ dependencies = [
     "scipy (>=1.16.2,<2.0.0)",
     "statsmodels (>=0.14.5,<0.15.0)",
     "feedparser (>=6.0.12,<7.0.0)",
+    "aiohttp (>=3.13.1,<4.0.0)",
 ]
 
 [build-system]
