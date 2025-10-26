@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import glob
+import sys
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from instructor import Instructor, Mode
@@ -333,39 +334,31 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     print("="*50)
 
 
-def analyze_news_file(input_file: str, output_file: str, client: Optional[Instructor] = None) -> bool:
+def analyze_news_file(input_file: str, output_file: str, client: Optional[Instructor] = None) -> List[ArticleWithSentiment]:
     """
-    Complete pipeline: load articles, analyze sentiment, save results.
-
+    Load articles, analyze sentiment, and return results without saving to file.
+    
     Args:
         input_file: Path to input JSON file with articles
-        output_file: Path to output JSON file for results
+        output_file: Path to output JSON file for results (not used)
         client: Instructor client instance. If None, creates default client.
-
+    
     Returns:
-        True if successful, False otherwise
+        List[ArticleWithSentiment]: Analysis results
     """
     try:
         # Load articles
         articles = load_articles_from_json(input_file)
         if not articles:
             logger.error("No articles loaded, aborting analysis")
-            return False
-
-        # Analyze sentiment
-        articles_with_sentiment = analyze_articles_batch(articles, client)
-
-        # Save results
-        save_results_to_json(articles_with_sentiment, output_file)
-
-        # Print summary
-        print_analysis_summary(articles_with_sentiment)
-
-        return True
-
+            return []
+        
+        # Analyze sentiment using core function
+        return analyze_articles_data(articles, client)
+        
     except Exception as e:
         logger.error(f"Error in analysis pipeline: {str(e)}")
-        return False
+        return []
 
 
 def main():
@@ -377,21 +370,34 @@ def main():
     news_dir = os.path.join(script_dir, "news")
     sentiments_dir = os.path.join(script_dir, "sentiments")
     
-    analyze_sentiments(news_dir=news_dir, sentiments_dir=sentiments_dir)
+    # Get analysis results from core function
+    analysis_data = analyze_sentiments(news_dir=news_dir, sentiments_dir=sentiments_dir)
+    
+    if analysis_data is None:
+        sys.exit(1)
+    
+    # Save results to file using existing logic
+    with open(analysis_data["output_file"], "w", encoding="utf-8") as f:
+        json.dump(analysis_data["results"], f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"Results saved to {analysis_data['output_file']}")
+    
+    print(f"\n✅ Analysis complete! Results saved to {analysis_data['output_file']}")
 
 def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="src/sentiment_analysis/sentiments"):
     """
-    Analyze sentiments for news articles with explicit parameters.
+    Analyze sentiments for news articles with explicit parameters and return results.
     
     This function contains the core logic for running sentiment analysis on news articles.
-    It finds the latest news file, determines output filename, and runs analysis.
+    It finds the latest news file, determines output filename, and runs analysis,
+    returning JSON-serializable results instead of saving to files.
     
     Args:
         news_dir: Directory containing news files (default: "src/sentiment_analysis/news")
         sentiments_dir: Directory for output sentiment files (default: "src/sentiment_analysis/sentiments")
     
     Returns:
-        dict: Dictionary containing results and metadata, or None if failed
+        dict: Dictionary containing analysis results and metadata, or None if failed
     """
     # Ensure directories exist
     os.makedirs(news_dir, exist_ok=True)
@@ -408,7 +414,7 @@ def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="s
     extracted_timestamp = extract_timestamp_from_filename(input_file)
 
     if extracted_timestamp:
-        # Use the same timestamp as the input file
+        # Use same timestamp as the input file
         output_filename = f"sentiments_{extracted_timestamp}.json"
         print(f"📋 Using input timestamp: {extracted_timestamp}")
     else:
@@ -424,29 +430,58 @@ def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="s
 
     # Run analysis
     print(f"📁 Input file: {input_file}")
-    print(f"📁 Output file: {output_file}")
+    print(f"📁 Would save to: {output_file}")
     print()
 
-    client = create_client()
+    # Load articles and analyze sentiment
+    articles = load_articles_from_json(input_file)
+    if not articles:
+        print("❌ Error: No articles found in input file")
+        return None
+        
+    articles_with_sentiment = analyze_articles_data(articles)
 
-    success = analyze_news_file(input_file, output_file, client)
+    # Convert to dictionaries for JSON serialization
+    results_dict = [article.model_dump() for article in articles_with_sentiment]
+    
+    print(f"\n✅ Analysis complete! Analyzed {len(articles_with_sentiment)} articles")
+    
+    return {
+        "results": results_dict,
+        "input_file": input_file,
+        "output_filename": output_filename,
+        "output_file": output_file,
+        "total_articles": len(articles),
+        "analyzed_articles": len(articles_with_sentiment),
+        "success": True
+    }
 
-    if success:
-        print(f"\n✅ Analysis complete! Results saved to {output_file}")
-        return {
-            "input_file": input_file,
-            "output_file": output_file,
-            "output_filename": output_filename,
-            "success": True
-        }
-    else:
-        print(f"\n❌ Analysis failed. Check logs for details.")
-        return {
-            "input_file": input_file,
-            "output_file": output_file,
-            "output_filename": output_filename,
-            "success": False
-        }
+def analyze_articles_data(articles, client=None):
+    """
+    Process articles and return sentiment analysis results.
+    
+    This function contains the core logic for analyzing sentiment of news articles
+    without file I/O operations.
+    
+    Args:
+        articles: List of article dictionaries
+        client: Instructor client instance. If None, creates default client.
+    
+    Returns:
+        list: List of ArticleWithSentiment objects with sentiment analysis
+    """
+    try:
+        # Analyze sentiment
+        articles_with_sentiment = analyze_articles_batch(articles, client)
+        
+        # Print summary
+        print_analysis_summary(articles_with_sentiment)
+        
+        return articles_with_sentiment
+        
+    except Exception as e:
+        logger.error(f"Error in analysis pipeline: {str(e)}")
+        return []
 
 
 if __name__ == "__main__":

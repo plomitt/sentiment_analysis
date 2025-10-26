@@ -27,6 +27,12 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["generate_sentiment_charts"]
 
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import pandas as pd
+import base64
+import io
+
 def ensure_directory(directory_path: str) -> Path:
     """Ensure directory exists, create if it doesn't."""
     path = Path(directory_path)
@@ -299,11 +305,11 @@ def create_sentiment_chart(
     total_charts: int = 1,
     title: str = None,
     dpi: int = 300
-) -> None:
-    """Create a high-quality sentiment chart."""
+) -> str:
+    """Create a high-quality sentiment chart and return as base64 string."""
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(14, 8), dpi=dpi)
-
+    
     # Plot sentiment scores
     ax.plot(
         df['datetime'],
@@ -316,13 +322,12 @@ def create_sentiment_chart(
         label='Sentiment Score',
         zorder=3
     )
-
+    
     # Plot discrete rolling average using step function
     if 'step_times' in df.attrs and 'step_values' in df.attrs:
         step_times = df.attrs['step_times']
         step_values = df.attrs['step_values']
         window_minutes = df.iloc[0].get('window_minutes', 'N/A')
-
         ax.step(
             step_times,
             step_values,
@@ -333,12 +338,11 @@ def create_sentiment_chart(
             label=f'Discrete Average ({window_minutes} min bins)',
             zorder=4
         )
-
+        
         # Add vertical lines at bin boundaries for clarity
         # Only show lines that are within the current data range
         data_start = df['datetime'].min()
         data_end = df['datetime'].max()
-
         for boundary_time in step_times[1:-1]:  # Skip first and last to avoid edge clutter
             if data_start <= boundary_time <= data_end:
                 ax.axvline(
@@ -360,11 +364,11 @@ def create_sentiment_chart(
             label=f'Average ({df.iloc[0].get("window_minutes", "N/A")} min)',
             zorder=4
         )
-
+    
     # Customize chart appearance
     ax.set_facecolor('#F8F9FA')
     fig.patch.set_facecolor('white')
-
+    
     # Set title
     if title:
         chart_title = title
@@ -372,7 +376,6 @@ def create_sentiment_chart(
         # Get start and end datetime objects
         start_dt = df['datetime'].min()
         end_dt = df['datetime'].max()
-
         # Check if start and end are on the same day
         if start_dt.date() == end_dt.date():
             # Same day: "Oct 16, 09:30 - 14:45"
@@ -380,30 +383,28 @@ def create_sentiment_chart(
         else:
             # Different days: "Oct 15, 16:30 - Oct 16, 10:15"
             time_range = f"{start_dt.strftime('%b %d, %H:%M')} - {end_dt.strftime('%b %d, %H:%M')}"
-
         chart_title = f"Sentiment Analysis - {time_range}"
-
+    
     if total_charts > 1:
         chart_title += f" (Chart {chart_num}/{total_charts})"
-
+    
     ax.set_title(chart_title, fontsize=16, fontweight='bold', pad=20)
-
+    
     # Set labels
     ax.set_xlabel('Time', fontsize=12, fontweight='600')
     ax.set_ylabel('Sentiment Score (1-10)', fontsize=12, fontweight='600')
-
+    
     # Set y-axis limits
     ax.set_ylim(0.5, 10.5)
     ax.set_yticks(range(1, 11))
-
+    
     # Add sentiment zones
     ax.axhspan(1, 4, alpha=0.1, color='red', label='Bearish Zone')
     ax.axhspan(4, 7, alpha=0.1, color='yellow', label='Neutral Zone')
     ax.axhspan(7, 10, alpha=0.1, color='green', label='Bullish Zone')
-
+    
     # Format x-axis - improved tick handling
     time_span = df['datetime'].max() - df['datetime'].min()
-
     if time_span.total_seconds() <= 3600:  # Less than 1 hour
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
@@ -413,31 +414,36 @@ def create_sentiment_chart(
     else:  # More than 4 hours
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-
+    
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
-
+    
     # Grid
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-
+    
     # Legend
     ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True)
-
+    
     # Add data info
     info_text = f"Data points: {len(df)}"
     if 'window_minutes' in df.iloc[0]:
         info_text += f" | Window: {df.iloc[0]['window_minutes']}min"
-
+    
     ax.text(0.02, 0.98, info_text, transform=ax.transAxes,
             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-
+    
     # Layout
     plt.tight_layout()
-
-    # Save
-    plt.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
+    
+    # Save to buffer and convert to base64
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', dpi=dpi, bbox_inches='tight', facecolor='white')
+    buffer.seek(0)
+    
+    # Convert to base64 string
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
     plt.close()
-
-    print(f"Chart saved: {output_path}")
+    
+    return image_base64
 
 
 def create_multiple_charts(
@@ -447,40 +453,46 @@ def create_multiple_charts(
     title: str = None,
     dpi: int = 300,
     charts_dir: str = None
-) -> None:
-    """Create multiple charts for large datasets."""
+) -> list:
+    """Create multiple charts for large datasets and return as base64 list."""
     total_charts, points_per_chart = determine_chart_split(df, max_points)
-
+    
+    images = []
+    
     # Ensure charts directory exists
     if charts_dir:
         charts_path = ensure_directory(charts_dir)
         base_output_path = charts_path / Path(base_output_path).name
-
+    
     if total_charts == 1:
-        create_sentiment_chart(df, base_output_path, 1, 1, title, dpi)
-        return
-
+        image_base64 = create_sentiment_chart(df, base_output_path, 1, 1, title, dpi)
+        images.append(image_base64)
+        return images
+    
     # Calculate overlap (10% of chart size)
     overlap = max(1, points_per_chart // 10)
-
+    
     output_path = Path(base_output_path)
     stem = output_path.stem
     suffix = output_path.suffix
     parent = output_path.parent
-
+    
     for i in range(total_charts):
         # Calculate start and end indices with overlap
         start_idx = max(0, i * points_per_chart - overlap)
         end_idx = min(len(df), (i + 1) * points_per_chart + overlap)
-
+        
         # Extract data for this chart
         chart_df = df.iloc[start_idx:end_idx].copy()
-
-        # Generate output filename
+        
+        # Generate output filename for context (not used for file saving)
         chart_filename = parent / f"{stem}_{i+1}{suffix}"
-
-        # Create chart
-        create_sentiment_chart(chart_df, str(chart_filename), i+1, total_charts, title, dpi)
+        
+        # Create chart and get base64
+        image_base64 = create_sentiment_chart(chart_df, str(chart_filename), i+1, total_charts, title, dpi)
+        images.append(image_base64)
+    
+    return images
 
 
 def main():
@@ -553,7 +565,9 @@ def main():
     )
 
     args = parser.parse_args()
-    generate_sentiment_charts(
+    
+    # Generate charts and get base64 images
+    images = generate_sentiment_charts(
         input_file=args.input_file,
         input_dir=args.input_dir,
         window_minutes=args.window_minutes,
@@ -564,14 +578,65 @@ def main():
         max_points=args.max_points,
         output_dir=args.output_dir
     )
+    
+    if images is None:
+        sys.exit(1)
+    
+    # Save base64 images to files
+    # Generate output filename using timestamp from input or generate new one
+    if args.input_file:
+        extracted_timestamp = extract_timestamp_from_filename(args.input_file)
+        if extracted_timestamp:
+            base_filename = f"chart_{extracted_timestamp}.png"
+        else:
+            now = datetime.now()
+            sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+            readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+            base_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
+    else:
+        # Auto-detected file case - generate new timestamp
+        now = datetime.now()
+        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        base_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
+    
+    # Override with custom output if provided
+    if args.output != "sentiment_chart.png":
+        base_filename = args.output
+    
+    # Save images to files
+    ensure_directory(args.output_dir)
+    
+    if len(images) == 1:
+        # Single chart case
+        output_path = os.path.join(args.output_dir, base_filename)
+        image_data = base64.b64decode(images[0])
+        with open(output_path, "wb") as f:
+            f.write(image_data)
+        print(f"✅ Chart saved to: {output_path}")
+    else:
+        # Multiple charts case
+        stem = Path(base_filename).stem
+        suffix = Path(base_filename).suffix
+        
+        for i, image_b64 in enumerate(images):
+            chart_filename = f"{stem}_{i+1}{suffix}"
+            output_path = os.path.join(args.output_dir, chart_filename)
+            
+            # Decode base64 and save
+            image_data = base64.b64decode(image_b64)
+            with open(output_path, "wb") as f:
+                f.write(image_data)
+            
+        print(f"✅ {len(images)} charts saved to {args.output_dir}")
 
 def generate_sentiment_charts(input_file=None, input_dir="src/sentiment_analysis/sentiments/", window_minutes=5, interval_minutes="60", output="sentiment_chart.png", title=None, dpi=300, max_points=400, output_dir="src/sentiment_analysis/charts"):
     """
-    Generate sentiment charts with explicit parameters.
+    Generate sentiment charts with explicit parameters and return base64 images.
     
     This function contains the core logic for creating sentiment analysis charts.
     It loads sentiment data, processes it, applies time windows and rolling averages,
-    and generates multiple chart visualizations.
+    and generates multiple chart visualizations returned as base64 strings.
     
     Args:
         input_file: Manual input file path (optional - auto-detects from input_dir if None)
@@ -585,7 +650,7 @@ def generate_sentiment_charts(input_file=None, input_dir="src/sentiment_analysis
         output_dir: Directory for chart output (default: "src/sentiment_analysis/charts")
     
     Returns:
-        dict: Dictionary containing results and metadata, or None if failed
+        list: List of base64-encoded PNG images
     """
     try:
         # Parse interval_minutes
@@ -657,10 +722,11 @@ def generate_sentiment_charts(input_file=None, input_dir="src/sentiment_analysis
 
         print("Creating charts...")
         print(f"📁 Input file: {input_file}")
-        print(f"📁 Output file: {output_path}")
+        print(f"📁 Would save to: {output_path}")
         print()
 
-        create_multiple_charts(
+        # Generate charts and get base64 images
+        images = create_multiple_charts(
             processed_df,
             output_path,
             max_points,
@@ -669,15 +735,9 @@ def generate_sentiment_charts(input_file=None, input_dir="src/sentiment_analysis
             output_dir
         )
 
-        print(f"\n✅ Chart generation complete! Chart saved to {output_path}")
+        print(f"\n✅ Chart generation complete! Generated {len(images)} chart(s)")
         
-        return {
-            "input_file": input_file,
-            "output_path": output_path,
-            "output_filename": output_filename,
-            "processed_rows": len(processed_df),
-            "charts_dir": output_dir
-        }
+        return images
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
