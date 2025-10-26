@@ -44,6 +44,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+__all__ = ["run_consistency_test"]
+
 def find_latest_news_file(news_dir: str) -> Optional[str]:
     """
     Find the latest news file from the news directory.
@@ -176,7 +178,7 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
     config = {
         "mode": Mode.JSON
     }
-    client = build_client(config)
+    client = build_client(config=config)
     
     results = []
 
@@ -1413,16 +1415,40 @@ def format_article_results_html(articles: List[Dict]) -> str:
 def main():
     """Main function to run the consistency test."""
     args = parse_arguments()
+    run_consistency_test(
+        input_file=args.input,
+        news_dir=args.news_dir,
+        iterations=args.iterations,
+        timeout=args.timeout,
+        output_dir=args.output_dir
+    )
 
+def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news", iterations=10, timeout=0.0, output_dir="src/sentiment_analysis/consistency"):
+    """
+    Run the consistency test with explicit parameters.
+    
+    This function contains the core logic for running sentiment consistency tests.
+    It loads articles, runs multiple sentiment analysis iterations, calculates statistics,
+    and saves results to timestamped output directories.
+    
+    Args:
+        input_file: Manual input file path (optional - auto-detects from news_dir if None)
+        news_dir: Directory containing news articles (default: "src/sentiment_analysis/news")
+        iterations: Number of sentiment analysis iterations per article (default: 10)
+        timeout: Timeout in seconds between API calls to avoid rate limiting (default: 0.0)
+        output_dir: Base directory for output files (default: "src/sentiment_analysis/consistency")
+    
+    Returns:
+        dict: Dictionary containing results and metadata, or None if failed
+    """
     # Determine input file
-    if args.input:
+    if input_file:
         # Manual file specified
-        input_file = args.input
         logger.info(f"📁 Using manually specified input file: {input_file}")
     else:
         # Auto-detect latest news file
         logger.info("🔍 Auto-detecting latest news file...")
-        latest_file = find_latest_news_file(args.news_dir)
+        latest_file = find_latest_news_file(news_dir)
         if not latest_file:
             logger.error("❌ Error: No news files found in src/sentiment_analysis/news/")
             logger.error("Please run the RSS fetcher first to generate news files.")
@@ -1447,7 +1473,7 @@ def main():
     # Collect sentiment data
     print(f"📁 Input file: {input_file}")
     print()
-    results = collect_sentiment_data(articles, args.iterations, args.timeout)
+    results = collect_sentiment_data(articles, iterations, timeout)
 
     # Calculate statistics for each article
     logger.info("Calculating statistics...")
@@ -1469,7 +1495,7 @@ def main():
     extracted_timestamp = extract_timestamp_from_filename(input_file)
 
     if extracted_timestamp:
-        # Use the same timestamp as the input file
+        # Use same timestamp as the input file
         timestamp = extracted_timestamp
         subfolder_name = f"consistency_{timestamp}"
         logger.info(f"📋 Using input timestamp: {timestamp}")
@@ -1484,7 +1510,7 @@ def main():
         subfolder_name = f"consistency_{timestamp}"
 
     # Create output directory with timestamped subfolder
-    base_output_dir = Path(args.output_dir)
+    base_output_dir = Path(output_dir)
     output_dir = base_output_dir / subfolder_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1494,13 +1520,13 @@ def main():
     # Prepare metadata
     metadata = {
         "timestamp": datetime.now().isoformat(),
-        "total_iterations": args.iterations,
+        "total_iterations": iterations,
         "total_articles": len(articles),
         "model": "ibm/granite-4-h-tiny",
         "temperature": 0.1,
         "input_file": input_file,
         "input_timestamp": timestamp,
-        "timeout_between_calls": args.timeout
+        "timeout_between_calls": timeout
     }
 
     # Save results
@@ -1544,6 +1570,15 @@ def main():
     logger.info(f"  • Enhanced Charts: enhanced_consistency_charts_{timestamp}.png")
     logger.info(f"  • Classification Comparison: classification_comparison_{timestamp}.png")
     logger.info("=" * 60)
+    
+    return {
+        "results": results,
+        "overall_stats": overall_stats,
+        "test_results": test_results,
+        "metadata": metadata,
+        "output_dir": output_dir,
+        "timestamp": timestamp
+    }
 
 
 if __name__ == "__main__":

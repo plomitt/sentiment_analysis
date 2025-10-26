@@ -24,6 +24,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+__all__ = ["analyze_sentiments"]
+
 class SentimentAnalysis(BaseModel):
     """Structured output for sentiment analysis results."""
 
@@ -68,7 +70,7 @@ def create_client() -> Instructor:
     config = {
         "mode": Mode.JSON
     }
-    client = build_client(config)
+    client = build_client(config=config)
     logger.info("Instructor client created for sentiment analysis")
     return client
 
@@ -367,24 +369,40 @@ def analyze_news_file(input_file: str, output_file: str, client: Optional[Instru
 
 
 def main():
-    """Main function to run the sentiment analysis."""
+    """Main function to run sentiment analysis."""
     # Get script directory to handle file paths correctly
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Define directory paths
     news_dir = os.path.join(script_dir, "news")
     sentiments_dir = os.path.join(script_dir, "sentiments")
+    
+    analyze_sentiments(news_dir=news_dir, sentiments_dir=sentiments_dir)
 
+def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="src/sentiment_analysis/sentiments"):
+    """
+    Analyze sentiments for news articles with explicit parameters.
+    
+    This function contains the core logic for running sentiment analysis on news articles.
+    It finds the latest news file, determines output filename, and runs analysis.
+    
+    Args:
+        news_dir: Directory containing news files (default: "src/sentiment_analysis/news")
+        sentiments_dir: Directory for output sentiment files (default: "src/sentiment_analysis/sentiments")
+    
+    Returns:
+        dict: Dictionary containing results and metadata, or None if failed
+    """
     # Ensure directories exist
     os.makedirs(news_dir, exist_ok=True)
     os.makedirs(sentiments_dir, exist_ok=True)
 
-    # Find the latest news file
+    # Find latest news file
     input_file = find_latest_news_file(news_dir)
     if not input_file:
         print("❌ Error: No news files found in src/sentiment_analysis/news/")
         print("Please run the RSS fetcher first to generate news files.")
-        return
+        return None
 
     # Try to extract timestamp from input filename for consistent tracking
     extracted_timestamp = extract_timestamp_from_filename(input_file)
@@ -409,12 +427,26 @@ def main():
     print(f"📁 Output file: {output_file}")
     print()
 
-    success = analyze_news_file(input_file, output_file)
+    client = create_client()
+
+    success = analyze_news_file(input_file, output_file, client)
 
     if success:
         print(f"\n✅ Analysis complete! Results saved to {output_file}")
+        return {
+            "input_file": input_file,
+            "output_file": output_file,
+            "output_filename": output_filename,
+            "success": True
+        }
     else:
         print(f"\n❌ Analysis failed. Check logs for details.")
+        return {
+            "input_file": input_file,
+            "output_file": output_file,
+            "output_filename": output_filename,
+            "success": False
+        }
 
 
 if __name__ == "__main__":

@@ -25,6 +25,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+__all__ = ["generate_sentiment_charts"]
+
 def ensure_directory(directory_path: str) -> Path:
     """Ensure directory exists, create if it doesn't."""
     path = Path(directory_path)
@@ -551,36 +553,67 @@ def main():
     )
 
     args = parser.parse_args()
+    generate_sentiment_charts(
+        input_file=args.input_file,
+        input_dir=args.input_dir,
+        window_minutes=args.window_minutes,
+        interval_minutes=args.interval_minutes,
+        output=args.output,
+        title=args.title,
+        dpi=args.dpi,
+        max_points=args.max_points,
+        output_dir=args.output_dir
+    )
 
+def generate_sentiment_charts(input_file=None, input_dir="src/sentiment_analysis/sentiments/", window_minutes=5, interval_minutes="60", output="sentiment_chart.png", title=None, dpi=300, max_points=400, output_dir="src/sentiment_analysis/charts"):
+    """
+    Generate sentiment charts with explicit parameters.
+    
+    This function contains the core logic for creating sentiment analysis charts.
+    It loads sentiment data, processes it, applies time windows and rolling averages,
+    and generates multiple chart visualizations.
+    
+    Args:
+        input_file: Manual input file path (optional - auto-detects from input_dir if None)
+        input_dir: Directory containing sentiment analysis files (default: "src/sentiment_analysis/sentiments/")
+        window_minutes: Rolling average window in minutes (default: 5)
+        interval_minutes: Time window for data (minutes, "all", or 0 for full dataset, default: "60")
+        output: Output image filename (default: "sentiment_chart.png")
+        title: Custom chart title (optional)
+        dpi: Image resolution in DPI (default: 300)
+        max_points: Maximum data points per chart (default: 400)
+        output_dir: Directory for chart output (default: "src/sentiment_analysis/charts")
+    
+    Returns:
+        dict: Dictionary containing results and metadata, or None if failed
+    """
     try:
         # Parse interval_minutes
-        interval_minutes = args.interval_minutes
-        if interval_minutes.lower() in ('all', 'ALL'):
+        if isinstance(interval_minutes, str) and interval_minutes.lower() in ('all', 'ALL'):
             interval_minutes = 'all'
-        else:
+        elif isinstance(interval_minutes, str):
             try:
                 interval_minutes = int(interval_minutes)
             except ValueError:
-                parser.error("interval_minutes must be a number, 'all', or 0")
+                print("Error: interval_minutes must be a number, 'all', or 0")
+                return None
 
         # Determine input file
-        if args.input_file:
+        if input_file:
             # Manual file specified
-            input_file = args.input_file
             print(f"📁 Using manually specified input file: {input_file}")
         else:
             # Auto-detect latest sentiment file
             print("🔍 Auto-detecting latest sentiment file...")
-            latest_file = find_latest_sentiment_file(args.input_dir)
+            latest_file = find_latest_sentiment_file(input_dir)
             if not latest_file:
                 print("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
-                print("Please run the sentiment analyzer first to generate sentiment files.")
-                return
+                print("Please run sentiment analyzer first to generate sentiment files.")
+                return None
             input_file = latest_file
 
         # Ensure charts directory exists
-        charts_dir = args.output_dir
-        ensure_directory(charts_dir)
+        ensure_directory(output_dir)
 
         # Generate output filename using timestamp from input file
         extracted_timestamp = extract_timestamp_from_filename(input_file)
@@ -598,8 +631,12 @@ def main():
             readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
             output_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
 
+        # Use custom output filename if provided, otherwise use generated one
+        if output != "sentiment_chart.png":
+            output_filename = output
+
         # Update output argument
-        output_path = os.path.join(charts_dir, output_filename)
+        output_path = os.path.join(output_dir, output_filename)
 
         # Load and process data
         print("Loading sentiment data...")
@@ -613,10 +650,10 @@ def main():
 
         if filtered_df.empty:
             print("No data available for the specified time window")
-            return
+            return None
 
         print("Calculating discrete rolling averages...")
-        processed_df = calculate_discrete_rolling_average(filtered_df, args.window_minutes)
+        processed_df = calculate_discrete_rolling_average(filtered_df, window_minutes)
 
         print("Creating charts...")
         print(f"📁 Input file: {input_file}")
@@ -626,13 +663,21 @@ def main():
         create_multiple_charts(
             processed_df,
             output_path,
-            args.max_points,
-            args.title,
-            args.dpi,
-            charts_dir
+            max_points,
+            title,
+            dpi,
+            output_dir
         )
 
         print(f"\n✅ Chart generation complete! Chart saved to {output_path}")
+        
+        return {
+            "input_file": input_file,
+            "output_path": output_path,
+            "output_filename": output_filename,
+            "processed_rows": len(processed_df),
+            "charts_dir": output_dir
+        }
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

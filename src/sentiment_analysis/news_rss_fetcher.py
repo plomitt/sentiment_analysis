@@ -10,6 +10,8 @@ import os
 from sentiment_analysis.searxng_search import searxng_search
 
 
+__all__ = ["fetch_news_rss"]
+
 def main():
     parser = argparse.ArgumentParser(description='Fetch Bitcoin news and save to JSON')
     parser.add_argument('--query', default='bitcoin', help='Search query (default: bitcoin)')
@@ -18,15 +20,41 @@ def main():
     parser.add_argument('--no-content', action='store_true', help='Skip fetching article content from SearXNG')
     parser.add_argument('--request-delay', type=float, default=0.0, help='Delay between SearXNG requests in seconds (default: 0.0)')
     args = parser.parse_args()
+    fetch_news_rss(
+        query=args.query,
+        count=args.count,
+        searxng_url=args.searxng_url,
+        no_content=args.no_content,
+        request_delay=args.request_delay
+    )
 
+def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False, request_delay=0.0):
+    """
+    Fetch news from RSS feeds with explicit parameters.
+    
+    This function contains the core logic for fetching news articles from RSS feeds,
+    optionally fetching article content using SearXNG search, and saving results
+    to timestamped JSON files.
+    
+    Args:
+        query: Search query for RSS feed (default: "bitcoin")
+        count: Number of articles to save (default: 10)
+        searxng_url: SearXNG instance URL (optional - uses env var or default if None)
+        no_content: Skip fetching article content if True (default: False)
+        request_delay: Delay between SearXNG requests in seconds (default: 0.0)
+    
+    Returns:
+        dict: Dictionary containing results and metadata, or None if no entries found
+    """
     # Configure SearXNG base URL
-    searxng_base_url = args.searxng_url
+    if searxng_url is None:
+        # Use default or environment variable
+        searxng_url = None  # Will be handled by searxng_search function
 
     # Set up logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    query = args.query
     rss_url = f"https://news.google.com/rss/search?q={query}"
     feed = feedparser.parse(rss_url)
 
@@ -42,8 +70,8 @@ def main():
         filepath = os.path.join(news_dir, filename)
 
         articles = []
-        for i, entry in enumerate(feed.entries[:args.count]):
-            logger.info(f"Processing article {i+1}/{args.count}: {entry.title[:50]}...")
+        for i, entry in enumerate(feed.entries[:count]):
+            logger.info(f"Processing article {i+1}/{count}: {entry.title[:50]}...")
 
             article = {
                 "title": entry.title,
@@ -54,12 +82,12 @@ def main():
             }
 
             # Fetch article content using SearXNG if not disabled
-            if not args.no_content:
+            if not no_content:
                 try:
                     logger.info(f"Fetching content for: {entry.title[:50]}...")
                     search_results = searxng_search(
                         queries=[entry.title],
-                        base_url=searxng_base_url,
+                        base_url=searxng_url,
                         max_results=1
                     )
 
@@ -76,15 +104,15 @@ def main():
                         logger.warning(f"No search results found for: {entry.title[:50]}")
 
                     # Add delay between requests to be respectful
-                    if i < len(feed.entries[:args.count]) - 1:  # Don't delay after the last article
-                        time.sleep(args.request_delay)
+                    if i < len(feed.entries[:count]) - 1:  # Don't delay after the last article
+                        time.sleep(request_delay)
 
                 except Exception as e:
                     article["body"] = ""
                     logger.error(f"Failed to fetch content for '{entry.title[:50]}': {str(e)}")
             else:
                 article["body"] = ""
-                logger.info("Skipping content fetch due to --no-content flag")
+                logger.info("Skipping content fetch due to no_content parameter")
 
             articles.append(article)
 
@@ -94,16 +122,26 @@ def main():
         # Count articles with content
         articles_with_content = sum(1 for article in articles if article.get("body"))
 
-        if args.no_content:
+        if no_content:
             logger.info(f"Saved {len(articles)} articles to {filepath} (content fetching disabled)")
         else:
             logger.info(f"Saved {len(articles)} articles to {filepath} ({articles_with_content} with content)")
 
         print(f"Saved {len(articles)} articles to {filepath}")
-        if not args.no_content:
+        if not no_content:
             print(f"Articles with content: {articles_with_content}/{len(articles)}")
+            
+        return {
+            "filepath": filepath,
+            "filename": filename,
+            "total_articles": len(articles),
+            "articles_with_content": articles_with_content,
+            "query": query,
+            "no_content": no_content
+        }
     else:
         print("No entries found")
+        return None
 
 if __name__ == "__main__":
     main()
