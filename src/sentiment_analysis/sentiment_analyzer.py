@@ -24,9 +24,6 @@ from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-__all__ = ["analyze_sentiments"]
-
 class SentimentAnalysis(BaseModel):
     """Structured output for sentiment analysis results."""
 
@@ -49,7 +46,6 @@ class SentimentAnalysis(BaseModel):
             raise ValueError('Score must be between 1.0 and 10.0')
         return v
 
-
 class ArticleWithSentiment(BaseModel):
     """Article data with sentiment analysis."""
 
@@ -60,6 +56,76 @@ class ArticleWithSentiment(BaseModel):
     unix_timestamp: Optional[int] = Field(None, description="Unix timestamp for sorting and analysis")
     sentiment: Optional[SentimentAnalysis] = Field(None, description="Sentiment analysis results")
 
+
+def get_file_dirs():
+    # Get script directory to handle file paths correctly
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Define directory paths
+    news_dir = os.path.join(script_dir, "news")
+    sentiments_dir = os.path.join(script_dir, "sentiments")
+
+    # Ensure directories exist
+    os.makedirs(news_dir, exist_ok=True)
+    os.makedirs(sentiments_dir, exist_ok=True)
+
+    return news_dir, sentiments_dir
+
+def find_latest_news_file(news_dir: str) -> Optional[str]:
+    """
+    Find the latest news file from the news directory.
+
+    Since news files are named with sortable prefixes for reverse chronological order,
+    the first file alphabetically is the newest.
+
+    Args:
+        news_dir: Path to the news directory
+
+    Returns:
+        Path to the latest news file, or None if no files found
+    """
+    try:
+        # Look for all news JSON files
+        pattern = os.path.join(news_dir, "news_*.json")
+        news_files = glob.glob(pattern)
+
+        if not news_files:
+            logger.error(f"No news files found in {news_dir}")
+            return None
+
+        # Sort alphabetically - with the new naming scheme, this puts newest first
+        news_files.sort()
+        latest_file = news_files[0]
+
+        logger.info(f"Found latest news file: {latest_file}")
+        print(f"📁 Input file: {latest_file}")
+        return latest_file
+
+    except Exception as e:
+        print("❌ Error: No news files found in src/sentiment_analysis/news/")
+        print("Please run the RSS fetcher first to generate news files.")
+        logger.error(f"Error finding latest news file: {str(e)}")
+        return None
+
+def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
+    """
+    Load articles from a JSON file.
+
+    Args:
+        file_path: Path to the JSON file containing articles
+
+    Returns:
+        List of article dictionaries
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            articles = json.load(f)
+        logger.info(f"Loaded {len(articles)} articles from {file_path}")
+        return articles
+    except Exception as e:
+        print("❌ Error: No articles found in input file")
+        logger.error(f"Error loading articles from {file_path}: {str(e)}")
+        return []
 
 def create_client() -> Instructor:
     """
@@ -75,8 +141,7 @@ def create_client() -> Instructor:
     logger.info("Instructor client created for sentiment analysis")
     return client
 
-
-def analyze_article(title: str, body: Optional[str], client: Optional[Instructor] = None) -> SentimentAnalysis:
+def analyze_article(title: str, body: Optional[str], client: Instructor) -> SentimentAnalysis:
     """
     Analyze a single article for sentiment.
 
@@ -88,9 +153,6 @@ def analyze_article(title: str, body: Optional[str], client: Optional[Instructor
     Returns:
         SentimentAnalysis object with score and reasoning
     """
-    if client is None:
-        client = create_client()
-
     # Handle None or empty body gracefully
     body_content = body if body else ""
 
@@ -119,8 +181,7 @@ def analyze_article(title: str, body: Optional[str], client: Optional[Instructor
             reasoning=f"Analysis failed due to error: {str(e)}"
         )
 
-
-def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Instructor] = None) -> List[ArticleWithSentiment]:
+def analyze_articles_batch(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
@@ -131,8 +192,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
     Returns:
         List of ArticleWithSentiment objects
     """
-    if client is None:
-        client = create_client()
+    client = create_client()
 
     results = []
     total_articles = len(articles)
@@ -170,128 +230,10 @@ def analyze_articles_batch(articles: List[Dict[str, Any]], client: Optional[Inst
             logger.error(f"Error processing article {i}: {str(e)}")
             continue
 
+    results_dict = [article.model_dump() for article in results]
     logger.info(f"Batch analysis complete. {len(results)} articles processed successfully")
-    return results
-
-
-def find_latest_news_file(news_dir: str) -> Optional[str]:
-    """
-    Find the latest news file from the news directory.
-
-    Since news files are named with sortable prefixes for reverse chronological order,
-    the first file alphabetically is the newest.
-
-    Args:
-        news_dir: Path to the news directory
-
-    Returns:
-        Path to the latest news file, or None if no files found
-    """
-    try:
-        # Look for all news JSON files
-        pattern = os.path.join(news_dir, "news_*.json")
-        news_files = glob.glob(pattern)
-
-        if not news_files:
-            logger.error(f"No news files found in {news_dir}")
-            return None
-
-        # Sort alphabetically - with the new naming scheme, this puts newest first
-        news_files.sort()
-        latest_file = news_files[0]
-
-        logger.info(f"Found latest news file: {latest_file}")
-        return latest_file
-
-    except Exception as e:
-        logger.error(f"Error finding latest news file: {str(e)}")
-        return None
-
-
-def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
-    """
-    Extract timestamp from a news filename for use in output filename.
-
-    Expected format: news_[sortable]_[readable].json
-    Example: news_99998238678017_2025-10-24_18-06-22.json
-
-    Args:
-        filepath: Full path to the input news file
-
-    Returns:
-        Timestamp string (sortable_readable) or None if extraction fails
-    """
-    try:
-        filename = os.path.basename(filepath)
-
-        # Expected pattern: news_[sortable]_[readable].json
-        # Example: news_99998238678017_2025-10-24_18-06-22.json
-
-        if not (filename.startswith("news_") and filename.endswith(".json")):
-            logger.warning(f"Filename doesn't match expected pattern: {filename}")
-            return None
-
-        # Remove "news_" prefix and ".json" suffix
-        # From: "news_99998238678017_2025-10-24_18-06-22.json"
-        # To:   "99998238678017_2025-10-24_18-06-22"
-        timestamp_part = filename[5:-5]
-
-        # Validate that the timestamp part contains the expected format
-        # Should have at least one underscore (separating sortable and readable parts)
-        # The readable part should also contain underscores for date formatting
-        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
-            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
-            return None
-
-        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
-        return timestamp_part
-
-    except Exception as e:
-        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
-        return None
-
-
-def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
-    """
-    Load articles from a JSON file.
-
-    Args:
-        file_path: Path to the JSON file containing articles
-
-    Returns:
-        List of article dictionaries
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            articles = json.load(f)
-        logger.info(f"Loaded {len(articles)} articles from {file_path}")
-        return articles
-    except Exception as e:
-        logger.error(f"Error loading articles from {file_path}: {str(e)}")
-        return []
-
-
-def save_results_to_json(articles_with_sentiment: List[ArticleWithSentiment], output_path: str):
-    """
-    Save analysis results to JSON file.
-
-    Args:
-        articles_with_sentiment: List of ArticleWithSentiment objects
-        output_path: Path where to save the results
-    """
-    try:
-        # Convert to dictionaries for JSON serialization
-        results_dict = [article.model_dump() for article in articles_with_sentiment]
-
-        # Save to file
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(results_dict, f, indent=2, ensure_ascii=False)
-
-        logger.info(f"Results saved to {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error saving results to {output_path}: {str(e)}")
-
+    print(f"\n✅ Analysis complete! Analyzed {len(results)} articles")
+    return results_dict
 
 def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     """
@@ -303,7 +245,7 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     if not articles_with_sentiment:
         return
 
-    scores = [article.sentiment.score for article in articles_with_sentiment if article.sentiment]
+    scores = [article['sentiment']['score'] for article in articles_with_sentiment if article['sentiment']]
 
     if not scores:
         logger.warning("No valid sentiment scores found")
@@ -333,83 +275,40 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     print(f"Strong Buy (8.1-10.0): {strong_buy} articles")
     print("="*50)
 
-
-def analyze_news_file(input_file: str, output_file: str, client: Optional[Instructor] = None) -> List[ArticleWithSentiment]:
+def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
     """
-    Load articles, analyze sentiment, and return results without saving to file.
-    
+    Extract timestamp from a news filename for use in output filename.
+
+    Expected format: news_[sortable]_[readable].json
+    Example: news_99998238678017_2025-10-24_18-06-22.json
+
     Args:
-        input_file: Path to input JSON file with articles
-        output_file: Path to output JSON file for results (not used)
-        client: Instructor client instance. If None, creates default client.
-    
+        filepath: Full path to the input news file
+
     Returns:
-        List[ArticleWithSentiment]: Analysis results
+        Timestamp string (sortable_readable) or None if extraction fails
     """
     try:
-        # Load articles
-        articles = load_articles_from_json(input_file)
-        if not articles:
-            logger.error("No articles loaded, aborting analysis")
-            return []
-        
-        # Analyze sentiment using core function
-        return analyze_articles_data(articles, client)
-        
+        filename = os.path.basename(filepath)
+
+        if not (filename.startswith("news_") and filename.endswith(".json")):
+            logger.warning(f"Filename doesn't match expected pattern: {filename}")
+            return None
+
+        timestamp_part = filename[5:-5]
+
+        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
+            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            return None
+
+        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
+        return timestamp_part
+
     except Exception as e:
-        logger.error(f"Error in analysis pipeline: {str(e)}")
-        return []
-
-
-def main():
-    """Main function to run sentiment analysis."""
-    # Get script directory to handle file paths correctly
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Define directory paths
-    news_dir = os.path.join(script_dir, "news")
-    sentiments_dir = os.path.join(script_dir, "sentiments")
-    
-    # Get analysis results from core function
-    analysis_data = analyze_sentiments(news_dir=news_dir, sentiments_dir=sentiments_dir)
-    
-    if analysis_data is None:
-        sys.exit(1)
-    
-    # Save results to file using existing logic
-    with open(analysis_data["output_file"], "w", encoding="utf-8") as f:
-        json.dump(analysis_data["results"], f, indent=2, ensure_ascii=False)
-    
-    logger.info(f"Results saved to {analysis_data['output_file']}")
-    
-    print(f"\n✅ Analysis complete! Results saved to {analysis_data['output_file']}")
-
-def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="src/sentiment_analysis/sentiments"):
-    """
-    Analyze sentiments for news articles with explicit parameters and return results.
-    
-    This function contains the core logic for running sentiment analysis on news articles.
-    It finds the latest news file, determines output filename, and runs analysis,
-    returning JSON-serializable results instead of saving to files.
-    
-    Args:
-        news_dir: Directory containing news files (default: "src/sentiment_analysis/news")
-        sentiments_dir: Directory for output sentiment files (default: "src/sentiment_analysis/sentiments")
-    
-    Returns:
-        dict: Dictionary containing analysis results and metadata, or None if failed
-    """
-    # Ensure directories exist
-    os.makedirs(news_dir, exist_ok=True)
-    os.makedirs(sentiments_dir, exist_ok=True)
-
-    # Find latest news file
-    input_file = find_latest_news_file(news_dir)
-    if not input_file:
-        print("❌ Error: No news files found in src/sentiment_analysis/news/")
-        print("Please run the RSS fetcher first to generate news files.")
+        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
         return None
 
+def get_output_filepath(sentiments_dir, input_file):
     # Try to extract timestamp from input filename for consistent tracking
     extracted_timestamp = extract_timestamp_from_filename(input_file)
 
@@ -427,62 +326,35 @@ def analyze_sentiments(news_dir="src/sentiment_analysis/news", sentiments_dir="s
         output_filename = f"sentiments_{sortable_timestamp}_{readable_timestamp}.json"
 
     output_file = os.path.join(sentiments_dir, output_filename)
+    print(f"📁 Output file: {output_file}\n")
+    return output_file
 
-    # Run analysis
-    print(f"📁 Input file: {input_file}")
-    print(f"📁 Would save to: {output_file}")
-    print()
+def save_results_to_json(output_file, articles_with_sentiment):
+    # Save results to file using existing logic
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(articles_with_sentiment, f, indent=4, ensure_ascii=False)
+    
+    logger.info(f"Results saved to {output_file}")
+    
+    print(f"\n✅ Analysis complete! Results saved to {output_file}")
+    
+def main():
+    news_dir, sentiments_dir = get_file_dirs()
+
+    # Find latest news file
+    input_file = find_latest_news_file(news_dir)
 
     # Load articles and analyze sentiment
     articles = load_articles_from_json(input_file)
-    if not articles:
-        print("❌ Error: No articles found in input file")
-        return None
-        
-    articles_with_sentiment = analyze_articles_data(articles)
+    articles_with_sentiment = analyze_articles_batch(articles)
+    
+    # Save the results
+    output_file = get_output_filepath(sentiments_dir, input_file)
+    save_results_to_json(output_file, articles_with_sentiment)
+    
+    print_analysis_summary(articles_with_sentiment)
 
-    # Convert to dictionaries for JSON serialization
-    results_dict = [article.model_dump() for article in articles_with_sentiment]
-    
-    print(f"\n✅ Analysis complete! Analyzed {len(articles_with_sentiment)} articles")
-    
-    return {
-        "results": results_dict,
-        "input_file": input_file,
-        "output_filename": output_filename,
-        "output_file": output_file,
-        "total_articles": len(articles),
-        "analyzed_articles": len(articles_with_sentiment),
-        "success": True
-    }
-
-def analyze_articles_data(articles, client=None):
-    """
-    Process articles and return sentiment analysis results.
-    
-    This function contains the core logic for analyzing sentiment of news articles
-    without file I/O operations.
-    
-    Args:
-        articles: List of article dictionaries
-        client: Instructor client instance. If None, creates default client.
-    
-    Returns:
-        list: List of ArticleWithSentiment objects with sentiment analysis
-    """
-    try:
-        # Analyze sentiment
-        articles_with_sentiment = analyze_articles_batch(articles, client)
-        
-        # Print summary
-        print_analysis_summary(articles_with_sentiment)
-        
-        return articles_with_sentiment
-        
-    except Exception as e:
-        logger.error(f"Error in analysis pipeline: {str(e)}")
-        return []
-
+__all__ = ["analyze_sentiments"]
 
 if __name__ == "__main__":
     main()

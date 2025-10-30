@@ -10,13 +10,11 @@ import os
 
 from sentiment_analysis.searxng_search import searxng_search
 
-
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-__all__ = ["fetch_news_rss"]
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(description='Fetch Bitcoin news and save to JSON')
     parser.add_argument('--query', default='bitcoin', help='Search query (default: bitcoin)')
     parser.add_argument('--count', type=int, default=10, help='Number of articles to save (default: 10)')
@@ -24,39 +22,7 @@ def main():
     parser.add_argument('--no-content', action='store_true', help='Skip fetching article content from SearXNG')
     parser.add_argument('--request-delay', type=float, default=0.0, help='Delay between SearXNG requests in seconds (default: 0.0)')
     args = parser.parse_args()
-    
-    # Get articles from core function
-    articles = fetch_news_rss(
-        query=args.query,
-        count=args.count,
-        searxng_url=args.searxng_url,
-        no_content=args.no_content,
-        request_delay=args.request_delay
-    )
-    
-    if articles is None:
-        sys.exit(1)
-    
-    # Save articles to JSON file using existing logic
-    now = datetime.now()
-    sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-    readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"news_{sortable_timestamp}_{readable_timestamp}.json"
-    filepath = os.path.join("src/sentiment_analysis/news", filename)
-
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(articles, f, indent=4, ensure_ascii=False)
-
-    articles_with_content = sum(1 for article in articles if article.get("body"))
-    
-    if args.no_content:
-        logger.info(f"Saved {len(articles)} articles to {filepath} (content fetching disabled)")
-    else:
-        logger.info(f"Saved {len(articles)} articles to {filepath} ({articles_with_content} with content)")
-
-    print(f"Saved {len(articles)} articles to {filepath}")
-    if not args.no_content:
-        print(f"Articles with content: {articles_with_content}/{len(articles)}")
+    return args
 
 def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False, request_delay=0.0):
     """
@@ -146,6 +112,46 @@ def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False
     else:
         print("No entries found")
         return []
+
+def save_articles_to_json(articles, args):
+    # Save articles to JSON file using existing logic
+    now = datetime.now()
+    sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
+    readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"news_{sortable_timestamp}_{readable_timestamp}.json"
+    filepath = os.path.join("src/sentiment_analysis/news", filename)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(articles, f, indent=4, ensure_ascii=False)
+
+    articles_with_content = sum(1 for article in articles if article.get("body"))
+    
+    if args.no_content:
+        logger.info(f"Saved {len(articles)} articles to {filepath} (content fetching disabled)")
+    else:
+        logger.info(f"Saved {len(articles)} articles to {filepath} ({articles_with_content} with content)")
+
+    print(f"Saved {len(articles)} articles to {filepath}")
+    if not args.no_content:
+        print(f"Articles with content: {articles_with_content}/{len(articles)}")
+
+def main():
+    args = parse_args()
+    
+    articles = fetch_news_rss(
+        query=args.query,
+        count=args.count,
+        searxng_url=args.searxng_url,
+        no_content=args.no_content,
+        request_delay=args.request_delay
+    )
+    
+    if articles is None:
+        sys.exit(1)
+    
+    save_articles_to_json(articles, args)
+
+__all__ = ["fetch_news_rss"]
 
 if __name__ == "__main__":
     main()
