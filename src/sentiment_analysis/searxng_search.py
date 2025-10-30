@@ -8,6 +8,11 @@ import asyncio
 import json
 import os
 
+from sentiment_analysis.utils import setup_logging
+
+# Configure logging
+logger = setup_logging(__name__)
+
 async def fetch_search_results(
     session: aiohttp.ClientSession,
     base_url: str,

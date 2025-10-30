@@ -8,10 +8,7 @@ sentiment scores with trading-focused reasoning.
 from __future__ import annotations
 
 from datetime import datetime
-import json
-import logging
 import os
-import glob
 import sys
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
@@ -19,11 +16,13 @@ from instructor import Instructor, Mode
 
 from sentiment_analysis.client_manager import build_client
 from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context
-from sentiment_analysis.utils import extract_timestamp_from_filename, make_timestamped_filename
+from sentiment_analysis.utils import (
+    make_timestamped_filename,
+    setup_logging, load_json_data, save_json_data, find_latest_file
+)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class SentimentAnalysis(BaseModel):
     """Structured output for sentiment analysis results."""
@@ -72,42 +71,6 @@ def get_file_dirs():
 
     return news_dir, sentiments_dir
 
-def find_latest_news_file(news_dir: str) -> Optional[str]:
-    """
-    Find the latest news file from the news directory.
-
-    Since news files are named with sortable prefixes for reverse chronological order,
-    the first file alphabetically is the newest.
-
-    Args:
-        news_dir: Path to the news directory
-
-    Returns:
-        Path to the latest news file, or None if no files found
-    """
-    try:
-        # Look for all news JSON files
-        pattern = os.path.join(news_dir, "news_*.json")
-        news_files = glob.glob(pattern)
-
-        if not news_files:
-            logger.error(f"No news files found in {news_dir}")
-            return None
-
-        # Sort alphabetically - with the new naming scheme, this puts newest first
-        news_files.sort()
-        latest_file = news_files[0]
-
-        logger.info(f"Found latest news file: {latest_file}")
-        print(f"📁 Input file: {latest_file}")
-        return latest_file
-
-    except Exception as e:
-        print("❌ Error: No news files found in src/sentiment_analysis/news/")
-        print("Please run the RSS fetcher first to generate news files.")
-        logger.error(f"Error finding latest news file: {str(e)}")
-        return None
-
 def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
     """
     Load articles from a JSON file.
@@ -119,8 +82,7 @@ def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
         List of article dictionaries
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            articles = json.load(f)
+        articles = load_json_data(file_path, logger)
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -278,25 +240,22 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
 
 def save_results_to_json(output_file, articles_with_sentiment):
     # Save results to file using existing logic
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(articles_with_sentiment, f, indent=4, ensure_ascii=False)
-    
-    logger.info(f"Results saved to {output_file}")
-    
+    save_json_data(articles_with_sentiment, output_file, logger)
+
     print(f"\n✅ Analysis complete! Results saved to {output_file}")
     
 def main():
     news_dir, sentiments_dir = get_file_dirs()
 
     # Find latest news file
-    input_file = find_latest_news_file(news_dir)
+    input_file = find_latest_file(news_dir, "news", "json", logger)
 
     # Load articles and analyze sentiment
     articles = load_articles_from_json(input_file)
     articles_with_sentiment = analyze_articles_batch(articles)
     
     # Save the results
-    output_filename = make_timestamped_filename(input_file, "news", "sentiments")
+    output_filename = make_timestamped_filename(input_file, "news", "sentiments", "json", "json", logger)
     output_file = os.path.join(sentiments_dir, output_filename)
     save_results_to_json(output_file, articles_with_sentiment)
     

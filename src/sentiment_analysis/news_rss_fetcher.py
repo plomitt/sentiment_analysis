@@ -3,17 +3,14 @@ import sys
 import feedparser
 import argparse
 import calendar
-import logging
-import json
 import time
 import os
 
 from sentiment_analysis.searxng_search import searxng_search
-from sentiment_analysis.utils import make_timestamped_filename
+from sentiment_analysis.utils import make_timestamped_filename, setup_logging, save_json_data
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Fetch Bitcoin news and save to JSON')
@@ -112,11 +109,10 @@ def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False
 def save_articles_to_json(articles, args):
     # Save articles to JSON file using existing logic
     news_dir = "src/sentiment_analysis/news"
-    filename = make_timestamped_filename(output_name="news")
+    filename = make_timestamped_filename(output_name="news", logger=logger)
     filepath = os.path.join(news_dir, filename)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(articles, f, indent=4, ensure_ascii=False)
+    save_json_data(articles, filepath, logger)
 
     articles_with_content = sum(1 for article in articles if article.get("body"))
     content_msg = f"(content fetching disabled)" if args.no_content else f"({articles_with_content}/{len(articles)} with content)"

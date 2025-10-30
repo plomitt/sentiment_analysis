@@ -7,9 +7,7 @@ Supports rolling averages, time window filtering, and multi-chart output for lar
 """
 
 import argparse
-import glob
 import json
-import logging
 import os
 import sys
 from datetime import datetime, timedelta
@@ -19,19 +17,16 @@ from typing import Tuple, Union, Optional, List, Dict, Any
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-
-
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import pandas as pd
 import base64
 import io
 
-from sentiment_analysis.utils import extract_timestamp_from_filename, make_timestamped_filename
+from sentiment_analysis.utils import (
+    make_timestamped_filename,
+    setup_logging, load_json_data, find_latest_file, ensure_directory
+)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -125,7 +120,7 @@ def determine_input_file(base_input_file, input_dir):
     else:
         # Auto-detect latest sentiment file
         print("🔍 Auto-detecting latest sentiment file...")
-        latest_file = find_latest_sentiment_file(input_dir)
+        latest_file = find_latest_file(input_dir, "sentiments", "json", logger)
         if not latest_file:
             print("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
             print("Please run sentiment analyzer first to generate sentiment files.")
@@ -135,46 +130,10 @@ def determine_input_file(base_input_file, input_dir):
     print(f"📁 Input file: {input_file}")
     return input_file
 
-
-def find_latest_sentiment_file(sentiments_dir: str) -> Optional[str]:
-    """
-    Find the latest sentiment file from the sentiments directory.
-
-    Since sentiment files are named with sortable prefixes for reverse chronological order,
-    the first file alphabetically is the newest.
-
-    Args:
-        sentiments_dir: Path to the sentiments directory
-
-    Returns:
-        Path to the latest sentiment file, or None if no files found
-    """
-    try:
-        # Look for all sentiment JSON files
-        pattern = os.path.join(sentiments_dir, "sentiments_*.json")
-        sentiment_files = glob.glob(pattern)
-
-        if not sentiment_files:
-            logger.error(f"No sentiment files found in {sentiments_dir}")
-            return None
-
-        # Sort alphabetically - with the new naming scheme, this puts newest first
-        sentiment_files.sort()
-        latest_file = sentiment_files[0]
-
-        logger.info(f"Found latest sentiment file: {latest_file}")
-        return latest_file
-
-    except Exception as e:
-        logger.error(f"Error finding latest sentiment file: {str(e)}")
-        return None
-
-
 def load_sentiment_data(json_file: str) -> List[Dict[str, Any]]:
     """Load and parse sentiment analysis data from JSON file."""
     try:
-        with open(json_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        data = load_json_data(json_file, logger)
 
         if not data:
             raise ValueError("JSON file is empty")
@@ -585,14 +544,9 @@ def generate_sentiment_charts(records, window_minutes=5, interval_minutes="60", 
         print(f"Error: {e}", file=sys.stderr)
         return None
 
-def ensure_directory(directory_path: str) -> Path:
-    """Ensure directory exists, create if it doesn't."""
-    path = Path(directory_path)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
 
 def save_results_to_files(args, images, input_file):
-    timestamped_filename = make_timestamped_filename(input_file, 'sentiments', 'chart', 'json', 'png')
+    timestamped_filename = make_timestamped_filename(input_file, 'sentiments', 'chart', 'json', 'png', logger)
     
     # Save images to files
     ensure_directory(args.output_dir)
