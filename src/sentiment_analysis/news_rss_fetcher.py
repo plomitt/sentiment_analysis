@@ -90,20 +90,14 @@ def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False
                 logger.info("Skipping content fetch due to no_content parameter")
 
             articles.append(article)
+        
+        articles_with_content = sum(1 for article in articles if article.get("body"))
+        content_msg = "(content fetching disabled)" if no_content else f"({articles_with_content} with content)"
+        logger.info(f"Fetched {len(articles)} articles {content_msg}")
 
-        if no_content:
-            logger.info(f"Fetched {len(articles)} articles (content fetching disabled)")
-        else:
-            logger.info(f"Fetched {len(articles)} articles ({sum(1 for article in articles if article.get('body'))} with content)")
-
-        print(f"Fetched {len(articles)} articles")
-        if not no_content:
-            articles_with_content = sum(1 for article in articles if article.get("body"))
-            print(f"Articles with content: {articles_with_content}/{len(articles)}")
-            
         return articles
     else:
-        print("No entries found")
+        logger.info("No entries found")
         return []
 
 def save_articles_to_json(articles, args):

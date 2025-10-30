@@ -108,7 +108,7 @@ def parse_interval_minutes(interval_minutes):
         interval_minutes = int(interval_minutes)
         return interval_minutes
     except ValueError:
-        print("Error: interval_minutes must be a number, 'all', or 0")
+        logger.error("Error: interval_minutes must be a number, 'all', or 0")
         return None
 
 def determine_input_file(base_input_file, input_dir):
@@ -116,18 +116,18 @@ def determine_input_file(base_input_file, input_dir):
     if base_input_file:
         # Manual file specified
         input_file = base_input_file
-        print(f"📁 Using manually specified input file: {base_input_file}")
+        logger.info(f"📁 Using manually specified input file: {base_input_file}")
     else:
         # Auto-detect latest sentiment file
-        print("🔍 Auto-detecting latest sentiment file...")
+        logger.info("🔍 Auto-detecting latest sentiment file...")
         latest_file = find_latest_file(input_dir, "sentiments", "json", logger)
         if not latest_file:
-            print("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
-            print("Please run sentiment analyzer first to generate sentiment files.")
+            logger.error("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
+            logger.error("Please run sentiment analyzer first to generate sentiment files.")
             return None
         input_file = latest_file
     
-    print(f"📁 Input file: {input_file}")
+    logger.info(f"📁 Input file: {input_file}")
     return input_file
 
 def load_sentiment_data(json_file: str) -> List[Dict[str, Any]]:
@@ -157,7 +157,7 @@ def load_sentiment_data(json_file: str) -> List[Dict[str, Any]]:
         if not records:
             raise ValueError("No valid sentiment data found in JSON file")
 
-        print(f"Loaded {len(records)} sentiment records from {json_file}")
+        logger.info(f"Loaded {len(records)} sentiment records from {json_file}")
         return records
 
     except FileNotFoundError:
@@ -184,7 +184,7 @@ def convert_timestamps(df: pd.DataFrame) -> pd.DataFrame:
     dropped_count = initial_count - len(df)
 
     if dropped_count > 0:
-        print(f"Warning: Dropped {dropped_count} records with invalid timestamps")
+        logger.warning(f"Warning: Dropped {dropped_count} records with invalid timestamps")
 
     # Sort by datetime
     df = df.sort_values('datetime').reset_index(drop=True)
@@ -195,7 +195,7 @@ def convert_timestamps(df: pd.DataFrame) -> pd.DataFrame:
 def filter_data_by_time(df: pd.DataFrame, interval_minutes: Union[str, int]) -> pd.DataFrame:
     """Filter data to include only entries within specified time window from latest entry."""
     if interval_minutes in ('all', 'ALL') or interval_minutes == 0:
-        print(f"Using all {len(df)} records (no time filtering)")
+        logger.info(f"Using all {len(df)} records (no time filtering)")
         return df
 
     if not isinstance(interval_minutes, int) or interval_minutes < 0:
@@ -212,8 +212,8 @@ def filter_data_by_time(df: pd.DataFrame, interval_minutes: Union[str, int]) -> 
     # Filter data
     filtered_df = df[df['datetime'] >= cutoff_time].copy()
 
-    print(f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes")
-    print(f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}")
+    logger.info(f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes")
+    logger.info(f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}")
 
     return filtered_df
 
@@ -513,20 +513,20 @@ def generate_sentiment_charts(records, window_minutes=5, interval_minutes="60", 
     try:
         df = pd.DataFrame(records)
 
-        print("Converting timestamps...")
+        logger.info("Converting timestamps...")
         df = convert_timestamps(df)
 
-        print("Filtering data by time window...")
+        logger.info("Filtering data by time window...")
         filtered_df = filter_data_by_time(df, interval_minutes)
 
         if filtered_df.empty:
-            print("No data available for the specified time window")
+            logger.warning("No data available for the specified time window")
             return None
 
-        print("Calculating discrete rolling averages...")
+        logger.info("Calculating discrete rolling averages...")
         processed_df = calculate_discrete_rolling_average(filtered_df, window_minutes)
 
-        print("Creating charts...")
+        logger.info("Creating charts...")
 
         # Generate charts and get base64 images
         images = create_charts(
@@ -536,12 +536,12 @@ def generate_sentiment_charts(records, window_minutes=5, interval_minutes="60", 
             dpi,
         )
 
-        print(f"\n✅ Chart generation complete! Generated {len(images)} chart(s)")
+        logger.info(f"✅ Chart generation complete! Generated {len(images)} chart(s)")
         
         return images
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         return None
 
 
@@ -557,7 +557,7 @@ def save_results_to_files(args, images, input_file):
         image_data = base64.b64decode(images[0])
         with open(output_path, "wb") as f:
             f.write(image_data)
-        print(f"✅ Chart saved to: {output_path}")
+        logger.info(f"✅ Chart saved to: {output_path}")
     else:
         # Multiple charts case
         stem = Path(timestamped_filename).stem
@@ -572,7 +572,7 @@ def save_results_to_files(args, images, input_file):
             with open(output_path, "wb") as f:
                 f.write(image_data)
             
-        print(f"✅ {len(images)} charts saved to {args.output_dir}")
+        logger.info(f"✅ {len(images)} charts saved to {args.output_dir}")
 
 def main():
     """Main function with CLI interface."""
@@ -582,7 +582,7 @@ def main():
     input_file = determine_input_file(args.input_file, args.input_dir)
 
     # Load and process data
-    print("Loading sentiment data...")
+    logger.info("Loading sentiment data...")
     records = load_sentiment_data(input_file)
     
     # Generate charts and get base64 images

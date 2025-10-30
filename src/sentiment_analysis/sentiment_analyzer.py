@@ -86,7 +86,7 @@ def load_articles_from_json(file_path: str) -> List[Dict[str, Any]]:
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
-        print("❌ Error: No articles found in input file")
+        logger.error("❌ Error: No articles found in input file")
         logger.error(f"Error loading articles from {file_path}: {str(e)}")
         return []
 
@@ -195,7 +195,7 @@ def analyze_articles_batch(articles: List[Dict[str, Any]]) -> List[Dict[str, Any
 
     results_dict = [article.model_dump() for article in results]
     logger.info(f"Batch analysis complete. {len(results)} articles processed successfully")
-    print(f"\n✅ Analysis complete! Analyzed {len(results)} articles")
+    logger.info(f"✅ Analysis complete! Analyzed {len(results)} articles")
     return results_dict
 
 def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
@@ -225,24 +225,24 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     weak_buy = sum(1 for score in scores if 6.1 <= score <= 8.0)
     strong_buy = sum(1 for score in scores if score > 8.0)
 
-    print("\n" + "="*50)
-    print("BITCOIN NEWS SENTIMENT ANALYSIS SUMMARY")
-    print("="*50)
-    print(f"Total Articles Analyzed: {len(scores)}")
-    print(f"Average Sentiment Score: {avg_score:.2f}")
-    print(f"Score Range: {min_score:.1f} - {max_score:.1f}")
-    print(f"Strong Sell (1.0-3.0): {strong_sell} articles")
-    print(f"Weak Sell (3.1-5.0): {weak_sell} articles")
-    print(f"Neutral (5.1-6.0): {neutral} articles")
-    print(f"Weak Buy (6.1-8.0): {weak_buy} articles")
-    print(f"Strong Buy (8.1-10.0): {strong_buy} articles")
-    print("="*50)
+    logger.info("="*50)
+    logger.info("BITCOIN NEWS SENTIMENT ANALYSIS SUMMARY")
+    logger.info("="*50)
+    logger.info(f"Total Articles Analyzed: {len(scores)}")
+    logger.info(f"Average Sentiment Score: {avg_score:.2f}")
+    logger.info(f"Score Range: {min_score:.1f} - {max_score:.1f}")
+    logger.info(f"Strong Sell (1.0-3.0): {strong_sell} articles")
+    logger.info(f"Weak Sell (3.1-5.0): {weak_sell} articles")
+    logger.info(f"Neutral (5.1-6.0): {neutral} articles")
+    logger.info(f"Weak Buy (6.1-8.0): {weak_buy} articles")
+    logger.info(f"Strong Buy (8.1-10.0): {strong_buy} articles")
+    logger.info("="*50)
 
 def save_results_to_json(output_file, articles_with_sentiment):
     # Save results to file using existing logic
     save_json_data(articles_with_sentiment, output_file, logger)
 
-    print(f"\n✅ Analysis complete! Results saved to {output_file}")
+    logger.info(f"✅ Analysis complete! Results saved to {output_file}")
     
 def main():
     news_dir, sentiments_dir = get_file_dirs()

@@ -66,24 +66,26 @@ def make_timestamped_filename(input_file: Optional[str] = None, input_name: Opti
     Returns:
         Generated filename with timestamp
     """
-    if input_file:
-        extracted_timestamp = extract_timestamp_from_filename(input_file, input_name, logger)
-        if extracted_timestamp:
-            base_filename = f"{output_name}_{extracted_timestamp}.{output_filetype}"
-        else:
+    try:
+        timestamp = None
+
+        if input_file:
+            timestamp = extract_timestamp_from_filename(input_file, input_name, logger)
+            logger.info("Timestamp extracted from input file")
+
+        if not timestamp:
             # Fallback: generate new timestamp if extraction fails
             now = datetime.now()
             sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
             readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-            base_filename = f"{output_name}_{sortable_timestamp}_{readable_timestamp}.{output_filetype}"
-    else:
-        # Fallback: generate new timestamp if extraction fails
-        now = datetime.now()
-        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-        base_filename = f"{output_name}_{sortable_timestamp}_{readable_timestamp}.{output_filetype}"
+            timestamp = f"{sortable_timestamp}_{readable_timestamp}"
+            logger.info("Timestamp generated from current time")
 
-    return base_filename
+        base_filename = f"{output_name}_{timestamp}.{output_filetype}"
+        return base_filename
+    except Exception as e:
+        logger.error(f"Error making timestamped filename: {str(e)}")
+        return None
 
 def setup_logging(name: str = None, level: int = logging.INFO,
                   format_string: str = None) -> logging.Logger:

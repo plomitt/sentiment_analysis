@@ -195,4 +195,4 @@ if __name__ == "__main__":
         max_results=2
     )
 
-    print(json.dumps(results, indent=2))
+    logger.debug("Search results: {}", json.dumps(results, indent=2))
