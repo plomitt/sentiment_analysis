@@ -546,7 +546,7 @@ def generate_sentiment_charts(records, window_minutes=5, interval_minutes="60", 
 
 
 def save_results_to_files(args, images, input_file):
-    timestamped_filename = make_timestamped_filename(input_file, 'sentiments', 'chart', 'json', 'png', logger)
+    timestamped_filename = make_timestamped_filename(input_file, 'sentiments', 'chart', 'png', logger)
     
     # Save images to files
     ensure_directory(args.output_dir)

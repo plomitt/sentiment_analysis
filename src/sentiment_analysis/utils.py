@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator
 from instructor import Instructor, Mode
 
-def extract_timestamp_from_filename(filepath: str, name_start: str, filetype: str = "json", logger: logging.Logger = None) -> Optional[str]:
+def extract_timestamp_from_filename(filepath: str, name_start: str, logger: logging.Logger = None) -> Optional[str]:
     """
     Extract timestamp from a news filename for use in output filename.
 
@@ -28,34 +28,30 @@ def extract_timestamp_from_filename(filepath: str, name_start: str, filetype: st
         Timestamp string (sortable_readable) or None if extraction fails
     """
     try:
-        if logger:
-            logger.debug(f'Extracting timestamp from: {filepath}, name_start: {name_start}, filetype: {filetype}')
+        logger.debug(f'Extracting timestamp from: {filepath}, name_start: {name_start}')
         filename = os.path.basename(filepath)
 
-        if not (filename.startswith(name_start) and filename.endswith(filetype)):
-            if logger:
-                logger.warning(f"Filename doesn't match expected pattern: {filename}")
+        if not (filename.startswith(name_start)):
+            logger.warning(f"Filename doesn't match expected pattern: {filename}")
             return None
 
         # Remove name_start prefix and filetype suffix
-        timestamp_part = filename[len(name_start)+1:-len(filetype)+1]
+        name_without_extension = filename.rsplit('.', 1)[0]
+        timestamp_part = name_without_extension[len(name_start)+1:]
 
         # Validate that the timestamp part contains the expected format
         if "_" not in timestamp_part or timestamp_part.count("_") < 2:
-            if logger:
-                logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
             return None
 
-        if logger:
-            logger.info(f"Extracted timestamp from filename: {timestamp_part}")
+        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
         return timestamp_part
 
     except Exception as e:
-        if logger:
-            logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
+        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
         return None
 
-def make_timestamped_filename(input_file: Optional[str] = None, input_name: Optional[str] = None, output_name: str = None, input_filetype: Optional[str] = "json", output_filetype: Optional[str] = "json", logger: logging.Logger = None) -> str:
+def make_timestamped_filename(input_file: Optional[str] = None, input_name: Optional[str] = None, output_name: str = None, output_filetype: Optional[str] = "json", logger: logging.Logger = None) -> str:
     """
     Generate timestamped filename using timestamp from input file or generate new one.
 
@@ -71,7 +67,7 @@ def make_timestamped_filename(input_file: Optional[str] = None, input_name: Opti
         Generated filename with timestamp
     """
     if input_file:
-        extracted_timestamp = extract_timestamp_from_filename(input_file, input_name, input_filetype, logger)
+        extracted_timestamp = extract_timestamp_from_filename(input_file, input_name, logger)
         if extracted_timestamp:
             base_filename = f"{output_name}_{extracted_timestamp}.{output_filetype}"
         else:
@@ -133,29 +129,24 @@ def load_json_data(file_path: str, logger: logging.Logger = None) -> Any:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        if logger:
-            logger.debug(f"Successfully loaded JSON data from {file_path}")
+        logger.debug(f"Successfully loaded JSON data from {file_path}")
         return data
 
     except FileNotFoundError:
         error_msg = f"File not found: {file_path}"
-        if logger:
-            logger.error(error_msg)
+        logger.error(error_msg)
         raise FileNotFoundError(error_msg)
     except json.JSONDecodeError as e:
         error_msg = f"Invalid JSON in file {file_path}: {str(e)}"
-        if logger:
-            logger.error(error_msg)
+        logger.error(error_msg)
         raise json.JSONDecodeError(error_msg, e.doc, e.pos)
     except Exception as e:
         error_msg = f"Error loading file {file_path}: {str(e)}"
-        if logger:
-            logger.error(error_msg)
+        logger.error(error_msg)
         raise Exception(error_msg)
 
 
-def save_json_data(data: Any, file_path: str, logger: logging.Logger = None,
-                   indent: int = 4, ensure_ascii: bool = False) -> None:
+def save_json_data(data: Any, file_path: str, logger: logging.Logger = None, indent: int = 4, ensure_ascii: bool = False) -> None:
     """
     Generic JSON file saving with standardized formatting and error handling.
 
@@ -178,13 +169,11 @@ def save_json_data(data: Any, file_path: str, logger: logging.Logger = None,
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)
 
-        if logger:
-            logger.info(f"Successfully saved JSON data to {file_path}")
+        logger.info(f"Successfully saved JSON data to {file_path}")
 
     except Exception as e:
         error_msg = f"Error saving file {file_path}: {str(e)}"
-        if logger:
-            logger.error(error_msg)
+        logger.error(error_msg)
         raise Exception(error_msg)
 
 
@@ -206,23 +195,20 @@ def find_latest_file(directory: str, pattern_prefix: str, file_extension: str = 
         files = glob.glob(pattern)
 
         if not files:
-            if logger:
-                logger.warning(f"No {pattern_prefix} files found in {directory}")
+            logger.warning(f"No {pattern_prefix} files found in {directory}")
             return None
 
         # Sort files alphabetically (reverse chronological naming)
         files.sort()
         latest_file = files[0]
 
-        if logger:
-            logger.debug(f"Found latest {pattern_prefix} file: {latest_file}")
+        logger.debug(f"Found latest {pattern_prefix} file: {latest_file}")
 
         return latest_file
 
     except Exception as e:
         error_msg = f"Error finding latest {pattern_prefix} file in {directory}: {str(e)}"
-        if logger:
-            logger.error(error_msg)
+        logger.error(error_msg)
         return None
 
 

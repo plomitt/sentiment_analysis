@@ -255,7 +255,7 @@ def main():
     articles_with_sentiment = analyze_articles_batch(articles)
     
     # Save the results
-    output_filename = make_timestamped_filename(input_file, "news", "sentiments", "json", "json", logger)
+    output_filename = make_timestamped_filename(input_file, "news", "sentiments", "json", logger)
     output_file = os.path.join(sentiments_dir, output_filename)
     save_results_to_json(output_file, articles_with_sentiment)
     
