@@ -632,20 +632,15 @@ def ensure_directory(directory_path: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
 
-def save_results_to_files(args, images):
+def save_results_to_files(args, images, input_file):
     # Save base64 images to files
     # Generate output filename using timestamp from input or generate new one
-    if args.input_file:
-        extracted_timestamp = extract_timestamp_from_filename(args.input_file)
-        if extracted_timestamp:
-            base_filename = f"chart_{extracted_timestamp}.png"
-        else:
-            now = datetime.now()
-            sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-            readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-            base_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
+    # Auto-detected file case - use timestamp from auto-detected sentiment file
+    extracted_timestamp = extract_timestamp_from_filename(input_file)
+    if extracted_timestamp:
+        base_filename = f"chart_{extracted_timestamp}.png"
     else:
-        # Auto-detected file case - generate new timestamp
+        # Fallback: generate new timestamp if extraction fails
         now = datetime.now()
         sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
         readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
@@ -702,7 +697,7 @@ def main():
         max_points=args.max_points,
     )
 
-    save_results_to_files(args, images)
+    save_results_to_files(args, images, input_file)
 
 __all__ = ["generate_sentiment_charts"]
 
