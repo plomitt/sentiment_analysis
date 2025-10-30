@@ -19,6 +19,7 @@ from instructor import Instructor, Mode
 
 from sentiment_analysis.client_manager import build_client
 from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context
+from sentiment_analysis.utils import extract_timestamp_from_filename, make_timestamped_filename
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -275,60 +276,6 @@ def print_analysis_summary(articles_with_sentiment: List[ArticleWithSentiment]):
     print(f"Strong Buy (8.1-10.0): {strong_buy} articles")
     print("="*50)
 
-def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
-    """
-    Extract timestamp from a news filename for use in output filename.
-
-    Expected format: news_[sortable]_[readable].json
-    Example: news_99998238678017_2025-10-24_18-06-22.json
-
-    Args:
-        filepath: Full path to the input news file
-
-    Returns:
-        Timestamp string (sortable_readable) or None if extraction fails
-    """
-    try:
-        filename = os.path.basename(filepath)
-
-        if not (filename.startswith("news_") and filename.endswith(".json")):
-            logger.warning(f"Filename doesn't match expected pattern: {filename}")
-            return None
-
-        timestamp_part = filename[5:-5]
-
-        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
-            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
-            return None
-
-        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
-        return timestamp_part
-
-    except Exception as e:
-        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
-        return None
-
-def get_output_filepath(sentiments_dir, input_file):
-    # Try to extract timestamp from input filename for consistent tracking
-    extracted_timestamp = extract_timestamp_from_filename(input_file)
-
-    if extracted_timestamp:
-        # Use same timestamp as the input file
-        output_filename = f"sentiments_{extracted_timestamp}.json"
-        print(f"📋 Using input timestamp: {extracted_timestamp}")
-    else:
-        # Fallback: generate new timestamp if extraction fails
-        print("⚠️  Could not extract timestamp from input filename, generating new timestamp")
-        now = datetime.now()
-        # Create sortable prefix: subtract from max timestamp to invert ordering
-        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-        output_filename = f"sentiments_{sortable_timestamp}_{readable_timestamp}.json"
-
-    output_file = os.path.join(sentiments_dir, output_filename)
-    print(f"📁 Output file: {output_file}\n")
-    return output_file
-
 def save_results_to_json(output_file, articles_with_sentiment):
     # Save results to file using existing logic
     with open(output_file, "w", encoding="utf-8") as f:
@@ -349,7 +296,8 @@ def main():
     articles_with_sentiment = analyze_articles_batch(articles)
     
     # Save the results
-    output_file = get_output_filepath(sentiments_dir, input_file)
+    output_filename = make_timestamped_filename(input_file, "news", "sentiments")
+    output_file = os.path.join(sentiments_dir, output_filename)
     save_results_to_json(output_file, articles_with_sentiment)
     
     print_analysis_summary(articles_with_sentiment)

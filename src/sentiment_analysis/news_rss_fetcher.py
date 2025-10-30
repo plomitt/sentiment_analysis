@@ -9,6 +9,7 @@ import time
 import os
 
 from sentiment_analysis.searxng_search import searxng_search
+from sentiment_analysis.utils import make_timestamped_filename
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -42,11 +43,6 @@ def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False
     Returns:
         list: List of article dictionaries with title, url, timestamp, source, and optionally body
     """
-    # Configure SearXNG base URL
-    if searxng_url is None:
-        # Use default or environment variable
-        searxng_url = None  # Will be handled by searxng_search function
-
     rss_url = f"https://news.google.com/rss/search?q={query}"
     feed = feedparser.parse(rss_url)
 
@@ -115,25 +111,16 @@ def fetch_news_rss(query="bitcoin", count=10, searxng_url=None, no_content=False
 
 def save_articles_to_json(articles, args):
     # Save articles to JSON file using existing logic
-    now = datetime.now()
-    sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-    readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"news_{sortable_timestamp}_{readable_timestamp}.json"
-    filepath = os.path.join("src/sentiment_analysis/news", filename)
+    news_dir = "src/sentiment_analysis/news"
+    filename = make_timestamped_filename(output_name="news")
+    filepath = os.path.join(news_dir, filename)
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(articles, f, indent=4, ensure_ascii=False)
 
     articles_with_content = sum(1 for article in articles if article.get("body"))
-    
-    if args.no_content:
-        logger.info(f"Saved {len(articles)} articles to {filepath} (content fetching disabled)")
-    else:
-        logger.info(f"Saved {len(articles)} articles to {filepath} ({articles_with_content} with content)")
-
-    print(f"Saved {len(articles)} articles to {filepath}")
-    if not args.no_content:
-        print(f"Articles with content: {articles_with_content}/{len(articles)}")
+    content_msg = f"(content fetching disabled)" if args.no_content else f"({articles_with_content}/{len(articles)} with content)"
+    logger.info(f"Saved {len(articles)} articles to {filepath} {content_msg}")
 
 def main():
     args = parse_args()

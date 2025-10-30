@@ -27,6 +27,8 @@ import pandas as pd
 import base64
 import io
 
+from sentiment_analysis.utils import extract_timestamp_from_filename, make_timestamped_filename
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -70,8 +72,8 @@ def parse_args():
 
     parser.add_argument(
         '--output',
-        default='sentiment_chart.png',
-        help='Output image filename (default: sentiment_chart.png)'
+        default='default',
+        help='Output image filename (default: chart_<timestamp>.png)'
     )
 
     parser.add_argument(
@@ -165,49 +167,6 @@ def find_latest_sentiment_file(sentiments_dir: str) -> Optional[str]:
 
     except Exception as e:
         logger.error(f"Error finding latest sentiment file: {str(e)}")
-        return None
-
-
-def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
-    """
-    Extract timestamp from a sentiment filename for use in output filename.
-
-    Expected format: sentiments_[sortable]_[readable].json
-    Example: sentiments_99998238678017_2025-10-24_18-06-22.json
-
-    Args:
-        filepath: Full path to the input sentiment file
-
-    Returns:
-        Timestamp string (sortable_readable) or None if extraction fails
-    """
-    try:
-        filename = os.path.basename(filepath)
-
-        # Expected pattern: sentiments_[sortable]_[readable].json
-        # Example: sentiments_99998238678017_2025-10-24_18-06-22.json
-
-        if not (filename.startswith("sentiments_") and filename.endswith(".json")):
-            logger.warning(f"Filename doesn't match expected pattern: {filename}")
-            return None
-
-        # Remove "sentiments_" prefix and ".json" suffix
-        # From: "sentiments_99998238678017_2025-10-24_18-06-22.json"
-        # To:   "99998238678017_2025-10-24_18-06-22"
-        timestamp_part = filename[11:-5]  # "sentiments_" is 11 chars (including underscore), ".json" is 5 chars
-
-        # Validate that the timestamp part contains the expected format
-        # Should have at least one underscore (separating sortable and readable parts)
-        # The readable part should also contain underscores for date formatting
-        if "_" not in timestamp_part or timestamp_part.count("_") < 2:
-            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
-            return None
-
-        logger.info(f"Extracted timestamp from filename: {timestamp_part}")
-        return timestamp_part
-
-    except Exception as e:
-        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
         return None
 
 
@@ -633,37 +592,22 @@ def ensure_directory(directory_path: str) -> Path:
     return path
 
 def save_results_to_files(args, images, input_file):
-    # Save base64 images to files
-    # Generate output filename using timestamp from input or generate new one
-    # Auto-detected file case - use timestamp from auto-detected sentiment file
-    extracted_timestamp = extract_timestamp_from_filename(input_file)
-    if extracted_timestamp:
-        base_filename = f"chart_{extracted_timestamp}.png"
-    else:
-        # Fallback: generate new timestamp if extraction fails
-        now = datetime.now()
-        sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
-        readable_timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-        base_filename = f"chart_{sortable_timestamp}_{readable_timestamp}.png"
-    
-    # Override with custom output if provided
-    if args.output != "sentiment_chart.png":
-        base_filename = args.output
+    timestamped_filename = make_timestamped_filename(input_file, 'sentiments', 'chart', 'json', 'png')
     
     # Save images to files
     ensure_directory(args.output_dir)
     
     if len(images) == 1:
         # Single chart case
-        output_path = os.path.join(args.output_dir, base_filename)
+        output_path = os.path.join(args.output_dir, timestamped_filename)
         image_data = base64.b64decode(images[0])
         with open(output_path, "wb") as f:
             f.write(image_data)
         print(f"✅ Chart saved to: {output_path}")
     else:
         # Multiple charts case
-        stem = Path(base_filename).stem
-        suffix = Path(base_filename).suffix
+        stem = Path(timestamped_filename).stem
+        suffix = Path(timestamped_filename).suffix
         
         for i, image_b64 in enumerate(images):
             chart_filename = f"{stem}_{i+1}{suffix}"
