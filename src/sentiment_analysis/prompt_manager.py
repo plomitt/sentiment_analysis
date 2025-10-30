@@ -1,9 +1,10 @@
 """
-Prompt manager for Bitcoin news sentiment analysis.
-Contains specialized prompts for trading-focused sentiment scoring.
+Prompt management for Bitcoin news sentiment analysis.
+
+This module contains specialized prompts and utility functions for
+trading-focused sentiment scoring of Bitcoin news articles.
 """
 
-from typing import Dict, Any
 
 def get_sentiment_analysis_prompt() -> str:
     """
@@ -12,6 +13,9 @@ def get_sentiment_analysis_prompt() -> str:
     This prompt uses few-shot learning with chain-of-thought reasoning to analyze
     Bitcoin news articles from a trading perspective, scoring them on a 1-10 scale
     where 1 suggests 'sell' and 10 suggests 'buy'.
+
+    Returns:
+        The complete sentiment analysis prompt with examples and scoring framework.
     """
     return """
         You are an expert Bitcoin trading analyst with deep understanding of cryptocurrency markets, technical analysis, and market sentiment indicators. Your task is to analyze Bitcoin news articles and provide sentiment scores from a trading perspective.
@@ -78,44 +82,57 @@ def get_sentiment_analysis_prompt() -> str:
         Reasoning: [Your concise reasoning focusing on trading implications and market impact]
         """
 
+
 def get_sentiment_analysis_prompt_with_context(title: str, body: str) -> str:
     """
     Get the sentiment analysis prompt with article context filled in.
 
     Args:
-        title: Article title
-        body: Article body content
+        title: Article title.
+        body: Article body content.
 
     Returns:
-        Formatted prompt with article context
+        Formatted prompt with article context.
     """
     base_prompt = get_sentiment_analysis_prompt()
     return base_prompt.format(title=title, body=body)
 
-def get_sentiment_score_definitions() -> Dict[str, str]:
+
+def get_sentiment_score_definitions() -> dict[str, str]:
     """
     Get detailed definitions for each sentiment score range.
+
     Useful for reference and ensuring consistency in scoring.
 
     Returns:
-        Dictionary mapping score ranges to their meanings
+        Dictionary mapping score ranges to their meanings.
     """
     return {
         "1.0-3.0": "STRONG SELL - Major negative catalysts (regulatory crackdowns, security breaches, institutional abandonment)",
         "3.1-5.0": "WEAK SELL - Moderate negative factors (negative price action, minor regulatory concerns, reduced adoption)",
         "5.1-6.0": "NEUTRAL/HOLD - Mixed signals or routine market movements without clear directional bias",
         "6.1-8.0": "WEAK BUY - Positive indicators (favorable developments, institutional interest, technical bullishness)",
-        "8.1-10.0": "STRONG BUY - Major positive catalysts (major institutional adoption, favorable regulation, breakthrough developments)"
+        "8.1-10.0": "STRONG BUY - Major positive catalysts (major institutional adoption, favorable regulation, breakthrough developments)",
     }
+
 
 def validate_sentiment_score(score: float) -> bool:
     """
     Validate that a sentiment score is within the acceptable range.
 
     Args:
-        score: The sentiment score to validate
+        score: The sentiment score to validate.
 
     Returns:
-        True if valid, False otherwise
+        True if valid, False otherwise.
     """
     return isinstance(score, (int, float)) and 1.0 <= score <= 10.0
+
+
+# Define the public API for this module
+__all__ = [
+    "get_sentiment_analysis_prompt",
+    "get_sentiment_analysis_prompt_with_context",
+    "get_sentiment_score_definitions",
+    "validate_sentiment_score",
+]

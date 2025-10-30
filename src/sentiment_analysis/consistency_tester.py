@@ -13,40 +13,46 @@ import logging
 import os
 import pickle
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Tuple, Optional
-import time
+from typing import Any
 
-from instructor import Mode
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+from instructor import Mode
 from scipy import stats
-from scipy.stats import variation, pearsonr
+from scipy.stats import variation
+
 try:
     import statsmodels.api as sm
+
     STATSMODELS_AVAILABLE = True
 except ImportError:
     STATSMODELS_AVAILABLE = False
-    print("Warning: statsmodels not available. Some robust statistical methods will be disabled.")
+    print(
+        "Warning: statsmodels not available. Some robust statistical methods will be disabled."
+    )
 
 # Import the existing sentiment analyzer
 from sentiment_analysis.client_manager import build_client
-from sentiment_analysis.sentiment_analyzer import analyze_article, load_articles_from_json
+from sentiment_analysis.sentiment_analyzer import (
+    analyze_article,
+    load_articles_from_json,
+)
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
 __all__ = ["run_consistency_test"]
 
-def find_latest_news_file(news_dir: str) -> Optional[str]:
+
+def find_latest_news_file(news_dir: str) -> str | None:
     """
     Find the latest news file from the news directory.
 
@@ -76,11 +82,11 @@ def find_latest_news_file(news_dir: str) -> Optional[str]:
         return latest_file
 
     except Exception as e:
-        logger.error(f"Error finding latest news file: {str(e)}")
+        logger.error(f"Error finding latest news file: {e!s}")
         return None
 
 
-def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
+def extract_timestamp_from_filename(filepath: str) -> str | None:
     """
     Extract timestamp from a news filename for use in output filename.
 
@@ -112,14 +118,16 @@ def extract_timestamp_from_filename(filepath: str) -> Optional[str]:
         # Should have at least one underscore (separating sortable and readable parts)
         # The readable part should also contain underscores for date formatting
         if "_" not in timestamp_part or timestamp_part.count("_") < 2:
-            logger.warning(f"Timestamp part doesn't contain expected format: {timestamp_part}")
+            logger.warning(
+                f"Timestamp part doesn't contain expected format: {timestamp_part}"
+            )
             return None
 
         logger.info(f"Extracted timestamp from filename: {timestamp_part}")
         return timestamp_part
 
     except Exception as e:
-        logger.error(f"Error extracting timestamp from filename {filepath}: {str(e)}")
+        logger.error(f"Error extracting timestamp from filename {filepath}: {e!s}")
         return None
 
 
@@ -132,35 +140,37 @@ def parse_arguments():
         "--iterations",
         type=int,
         default=10,
-        help="Number of iterations to run for each article (default: 10)"
+        help="Number of iterations to run for each article (default: 10)",
     )
     parser.add_argument(
         "--input",
         type=str,
-        help="Input JSON file containing articles to analyze (optional - auto-detects from news directory if not provided)"
+        help="Input JSON file containing articles to analyze (optional - auto-detects from news directory if not provided)",
     )
     parser.add_argument(
         "--news-dir",
         type=str,
         default="src/sentiment_analysis/news",
-        help="Directory containing news articles (default: src/sentiment_analysis/news)"
+        help="Directory containing news articles (default: src/sentiment_analysis/news)",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
         default="src/sentiment_analysis/consistency",
-        help="Output directory for results (default: src/sentiment_analysis/consistency)"
+        help="Output directory for results (default: src/sentiment_analysis/consistency)",
     )
     parser.add_argument(
         "--timeout",
         type=float,
         default=0.0,
-        help="Timeout in seconds between API calls to avoid rate limiting (default: 0.0)"
+        help="Timeout in seconds between API calls to avoid rate limiting (default: 0.0)",
     )
     return parser.parse_args()
 
 
-def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float = 0.0) -> List[Dict]:
+def collect_sentiment_data(
+    articles: list[dict], iterations: int, timeout: float = 0.0
+) -> list[dict]:
     """
     Run sentiment analysis multiple times on each article.
 
@@ -173,17 +183,19 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
         List of article results with multiple sentiment scores
     """
 
-    logger.info(f"Starting data collection: {len(articles)} articles × {iterations} iterations")
+    logger.info(
+        f"Starting data collection: {len(articles)} articles × {iterations} iterations"
+    )
 
-    config = {
-        "mode": Mode.JSON
-    }
+    config = {"mode": Mode.JSON}
     client = build_client(config=config)
-    
+
     results = []
 
     for i, article in enumerate(articles, 1):
-        logger.info(f"Processing article {i}/{len(articles)}: {article['title'][:50]}...")
+        logger.info(
+            f"Processing article {i}/{len(articles)}: {article['title'][:50]}..."
+        )
 
         article_result = {
             "title": article["title"],
@@ -193,7 +205,7 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
             "unix_timestamp": article.get("unix_timestamp"),
             "scores": [],
             "reasonings": [],
-            "run_timestamps": []
+            "run_timestamps": [],
         }
 
         for iteration in range(iterations):
@@ -201,7 +213,9 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
                 logger.info(f"  Running iteration {iteration + 1}/{iterations}")
 
                 # Run sentiment analysis
-                sentiment = analyze_article(article["title"], article.get("body", ""), client)
+                sentiment = analyze_article(
+                    article["title"], article.get("body", ""), client
+                )
 
                 # Store results
                 article_result["scores"].append(sentiment.score)
@@ -213,16 +227,18 @@ def collect_sentiment_data(articles: List[Dict], iterations: int, timeout: float
                     time.sleep(timeout)
 
             except Exception as e:
-                logger.error(f"  Error in iteration {iteration + 1}: {str(e)}")
+                logger.error(f"  Error in iteration {iteration + 1}: {e!s}")
                 # Continue with other iterations even if one fails
 
         results.append(article_result)
-        logger.info(f"  Completed {len(article_result['scores'])} successful iterations")
+        logger.info(
+            f"  Completed {len(article_result['scores'])} successful iterations"
+        )
 
     return results
 
 
-def calculate_article_statistics(scores: List[float]) -> Dict[str, Any]:
+def calculate_article_statistics(scores: list[float]) -> dict[str, Any]:
     """
     Calculate statistical measures for a single article's scores.
 
@@ -253,7 +269,7 @@ def calculate_article_statistics(scores: List[float]) -> Dict[str, Any]:
             "ci_lower": float(scores[0]),
             "ci_upper": float(scores[0]),
             "margin_error": 0.0,
-            "sample_size": 1
+            "sample_size": 1,
         }
 
     scores_array = np.array(scores)
@@ -301,7 +317,7 @@ def calculate_article_statistics(scores: List[float]) -> Dict[str, Any]:
         float(cv) if not np.isnan(cv) else 0.0,
         frequency_weighted_cv,
         robust_stats.get("robust_cv", 0.0),
-        frequency_metrics.get("mode_frequency", 0.0)
+        frequency_metrics.get("mode_frequency", 0.0),
     )
 
     return {
@@ -325,11 +341,11 @@ def calculate_article_statistics(scores: List[float]) -> Dict[str, Any]:
         "frequency_metrics": frequency_metrics,
         "robust_statistics": robust_stats,
         "frequency_weighted_cv": frequency_weighted_cv,
-        "enhanced_classification": enhanced_classification
+        "enhanced_classification": enhanced_classification,
     }
 
 
-def calculate_mode_frequency(scores: List[float]) -> Dict[str, Any]:
+def calculate_mode_frequency(scores: list[float]) -> dict[str, Any]:
     """
     Calculate frequency-based metrics for consistency analysis.
 
@@ -362,12 +378,13 @@ def calculate_mode_frequency(scores: List[float]) -> Dict[str, Any]:
         "outlier_values": [float(v) for v in outlier_values],
         "outlier_count": int(outlier_count),
         "outlier_frequency": float(outlier_frequency),
-        "unique_values": len(unique_values)
+        "unique_values": len(unique_values),
     }
 
 
-def calculate_frequency_weighted_cv(scores: List[float], traditional_cv: float,
-                                 frequency_weight: float = 0.3) -> float:
+def calculate_frequency_weighted_cv(
+    scores: list[float], traditional_cv: float, frequency_weight: float = 0.3
+) -> float:
     """
     Calculate frequency-weighted coefficient of variation.
 
@@ -396,7 +413,7 @@ def calculate_frequency_weighted_cv(scores: List[float], traditional_cv: float,
     return traditional_cv * adjustment_factor
 
 
-def calculate_robust_statistics(scores: List[float]) -> Dict[str, Any]:
+def calculate_robust_statistics(scores: list[float]) -> dict[str, Any]:
     """
     Calculate robust statistical measures using Huber M-estimators and other robust methods.
 
@@ -414,7 +431,7 @@ def calculate_robust_statistics(scores: List[float]) -> Dict[str, Any]:
             "huber_location": float(scores[0]),
             "huber_scale": 0.0,
             "mad": 0.0,
-            "robust_cv": 0.0
+            "robust_cv": 0.0,
         }
 
     scores_array = np.array(scores)
@@ -456,8 +473,12 @@ def calculate_robust_statistics(scores: List[float]) -> Dict[str, Any]:
     return robust_stats
 
 
-def classify_enhanced_consistency(traditional_cv: float, frequency_weighted_cv: float,
-                                robust_cv: float, mode_frequency: float) -> Dict[str, str]:
+def classify_enhanced_consistency(
+    traditional_cv: float,
+    frequency_weighted_cv: float,
+    robust_cv: float,
+    mode_frequency: float,
+) -> dict[str, str]:
     """
     Enhanced classification system that considers multiple consistency metrics.
 
@@ -516,7 +537,7 @@ def classify_enhanced_consistency(traditional_cv: float, frequency_weighted_cv: 
         "traditional": traditional_class,
         "frequency_adjusted": freq_class,
         "robust": robust_class,
-        "overall": overall_class
+        "overall": overall_class,
     }
 
 
@@ -532,13 +553,12 @@ def classify_consistency(cv: float) -> str:
     """
     if cv <= 0.05:
         return "Highly Consistent"
-    elif cv <= 0.10:
+    if cv <= 0.10:
         return "Moderately Consistent"
-    else:
-        return "Inconsistent"
+    return "Inconsistent"
 
 
-def calculate_overall_statistics(all_results: List[Dict]) -> Dict[str, Any]:
+def calculate_overall_statistics(all_results: list[dict]) -> dict[str, Any]:
     """
     Calculate overall statistics across all articles.
 
@@ -552,28 +572,61 @@ def calculate_overall_statistics(all_results: List[Dict]) -> Dict[str, Any]:
         return {}
 
     # Extract statistics from all articles
-    all_std_devs = [r["statistics"]["std_dev"] for r in all_results if "statistics" in r]
+    all_std_devs = [
+        r["statistics"]["std_dev"] for r in all_results if "statistics" in r
+    ]
     all_cvs = [r["statistics"]["cv"] for r in all_results if "statistics" in r]
-    all_consistency_rates = [r["statistics"]["consistency_rate"] for r in all_results if "statistics" in r]
+    all_consistency_rates = [
+        r["statistics"]["consistency_rate"] for r in all_results if "statistics" in r
+    ]
     all_ranges = [r["statistics"]["range"] for r in all_results if "statistics" in r]
 
     # Extract enhanced metrics
-    all_freq_weighted_cvs = [r["statistics"].get("frequency_weighted_cv", r["statistics"]["cv"])
-                            for r in all_results if "statistics" in r]
-    all_robust_cvs = [r["statistics"].get("robust_statistics", {}).get("robust_cv", r["statistics"]["cv"])
-                     for r in all_results if "statistics" in r]
-    all_mode_frequencies = [r["statistics"].get("frequency_metrics", {}).get("mode_frequency", 0.0)
-                           for r in all_results if "statistics" in r]
+    all_freq_weighted_cvs = [
+        r["statistics"].get("frequency_weighted_cv", r["statistics"]["cv"])
+        for r in all_results
+        if "statistics" in r
+    ]
+    all_robust_cvs = [
+        r["statistics"]
+        .get("robust_statistics", {})
+        .get("robust_cv", r["statistics"]["cv"])
+        for r in all_results
+        if "statistics" in r
+    ]
+    all_mode_frequencies = [
+        r["statistics"].get("frequency_metrics", {}).get("mode_frequency", 0.0)
+        for r in all_results
+        if "statistics" in r
+    ]
 
     # Extract enhanced classifications
-    all_traditional_classifications = [r["statistics"].get("enhanced_classification", {}).get("traditional", "Inconsistent")
-                                      for r in all_results if "statistics" in r]
-    all_frequency_adjusted_classifications = [r["statistics"].get("enhanced_classification", {}).get("frequency_adjusted", "Inconsistent")
-                                            for r in all_results if "statistics" in r]
-    all_robust_classifications = [r["statistics"].get("enhanced_classification", {}).get("robust", "Inconsistent")
-                                 for r in all_results if "statistics" in r]
-    all_overall_classifications = [r["statistics"].get("enhanced_classification", {}).get("overall", "Inconsistent")
-                                 for r in all_results if "statistics" in r]
+    all_traditional_classifications = [
+        r["statistics"]
+        .get("enhanced_classification", {})
+        .get("traditional", "Inconsistent")
+        for r in all_results
+        if "statistics" in r
+    ]
+    all_frequency_adjusted_classifications = [
+        r["statistics"]
+        .get("enhanced_classification", {})
+        .get("frequency_adjusted", "Inconsistent")
+        for r in all_results
+        if "statistics" in r
+    ]
+    all_robust_classifications = [
+        r["statistics"].get("enhanced_classification", {}).get("robust", "Inconsistent")
+        for r in all_results
+        if "statistics" in r
+    ]
+    all_overall_classifications = [
+        r["statistics"]
+        .get("enhanced_classification", {})
+        .get("overall", "Inconsistent")
+        for r in all_results
+        if "statistics" in r
+    ]
 
     if not all_std_devs:
         return {}
@@ -584,49 +637,79 @@ def calculate_overall_statistics(all_results: List[Dict]) -> Dict[str, Any]:
         "median_std_dev": float(np.median(all_std_devs)),
         "max_std_dev": float(np.max(all_std_devs)),
         "min_std_dev": float(np.min(all_std_devs)),
-
         "avg_cv": float(np.mean(all_cvs)),
         "median_cv": float(np.median(all_cvs)),
-
         "avg_consistency_rate": float(np.mean(all_consistency_rates)),
         "avg_range": float(np.mean(all_ranges)),
-
         # Enhanced metrics
         "avg_frequency_weighted_cv": float(np.mean(all_freq_weighted_cvs)),
         "avg_robust_cv": float(np.mean(all_robust_cvs)),
         "avg_mode_frequency": float(np.mean(all_mode_frequencies)),
-
         # Traditional classification distribution
         "consistency_distribution": {
             "highly_consistent": sum(1 for cv in all_cvs if cv <= 0.05),
             "moderately_consistent": sum(1 for cv in all_cvs if 0.05 < cv <= 0.10),
-            "inconsistent": sum(1 for cv in all_cvs if cv > 0.10)
+            "inconsistent": sum(1 for cv in all_cvs if cv > 0.10),
         },
-
         # Enhanced classification distributions
         "traditional_classification_distribution": {
-            "highly_consistent": sum(1 for cls in all_traditional_classifications if cls == "Highly Consistent"),
-            "moderately_consistent": sum(1 for cls in all_traditional_classifications if cls == "Moderately Consistent"),
-            "inconsistent": sum(1 for cls in all_traditional_classifications if cls == "Inconsistent")
+            "highly_consistent": sum(
+                1
+                for cls in all_traditional_classifications
+                if cls == "Highly Consistent"
+            ),
+            "moderately_consistent": sum(
+                1
+                for cls in all_traditional_classifications
+                if cls == "Moderately Consistent"
+            ),
+            "inconsistent": sum(
+                1 for cls in all_traditional_classifications if cls == "Inconsistent"
+            ),
         },
-
         "frequency_adjusted_classification_distribution": {
-            "highly_consistent": sum(1 for cls in all_frequency_adjusted_classifications if cls == "Highly Consistent"),
-            "moderately_consistent": sum(1 for cls in all_frequency_adjusted_classifications if cls == "Moderately Consistent"),
-            "inconsistent": sum(1 for cls in all_frequency_adjusted_classifications if cls == "Inconsistent")
+            "highly_consistent": sum(
+                1
+                for cls in all_frequency_adjusted_classifications
+                if cls == "Highly Consistent"
+            ),
+            "moderately_consistent": sum(
+                1
+                for cls in all_frequency_adjusted_classifications
+                if cls == "Moderately Consistent"
+            ),
+            "inconsistent": sum(
+                1
+                for cls in all_frequency_adjusted_classifications
+                if cls == "Inconsistent"
+            ),
         },
-
         "robust_classification_distribution": {
-            "highly_consistent": sum(1 for cls in all_robust_classifications if cls == "Highly Consistent"),
-            "moderately_consistent": sum(1 for cls in all_robust_classifications if cls == "Moderately Consistent"),
-            "inconsistent": sum(1 for cls in all_robust_classifications if cls == "Inconsistent")
+            "highly_consistent": sum(
+                1 for cls in all_robust_classifications if cls == "Highly Consistent"
+            ),
+            "moderately_consistent": sum(
+                1
+                for cls in all_robust_classifications
+                if cls == "Moderately Consistent"
+            ),
+            "inconsistent": sum(
+                1 for cls in all_robust_classifications if cls == "Inconsistent"
+            ),
         },
-
         "overall_classification_distribution": {
-            "highly_consistent": sum(1 for cls in all_overall_classifications if cls == "Highly Consistent"),
-            "moderately_consistent": sum(1 for cls in all_overall_classifications if cls == "Moderately Consistent"),
-            "inconsistent": sum(1 for cls in all_overall_classifications if cls == "Inconsistent")
-        }
+            "highly_consistent": sum(
+                1 for cls in all_overall_classifications if cls == "Highly Consistent"
+            ),
+            "moderately_consistent": sum(
+                1
+                for cls in all_overall_classifications
+                if cls == "Moderately Consistent"
+            ),
+            "inconsistent": sum(
+                1 for cls in all_overall_classifications if cls == "Inconsistent"
+            ),
+        },
     }
 
     # Add percentages for all classification distributions
@@ -634,27 +717,41 @@ def calculate_overall_statistics(all_results: List[Dict]) -> Dict[str, Any]:
     if total_articles > 0:
         # Traditional distribution percentages
         overall_stats["consistency_distribution"]["highly_consistent_pct"] = (
-            overall_stats["consistency_distribution"]["highly_consistent"] / total_articles * 100
+            overall_stats["consistency_distribution"]["highly_consistent"]
+            / total_articles
+            * 100
         )
         overall_stats["consistency_distribution"]["moderately_consistent_pct"] = (
-            overall_stats["consistency_distribution"]["moderately_consistent"] / total_articles * 100
+            overall_stats["consistency_distribution"]["moderately_consistent"]
+            / total_articles
+            * 100
         )
         overall_stats["consistency_distribution"]["inconsistent_pct"] = (
-            overall_stats["consistency_distribution"]["inconsistent"] / total_articles * 100
+            overall_stats["consistency_distribution"]["inconsistent"]
+            / total_articles
+            * 100
         )
 
         # Enhanced distribution percentages
-        for dist_name in ["traditional_classification_distribution", "frequency_adjusted_classification_distribution",
-                         "robust_classification_distribution", "overall_classification_distribution"]:
+        for dist_name in [
+            "traditional_classification_distribution",
+            "frequency_adjusted_classification_distribution",
+            "robust_classification_distribution",
+            "overall_classification_distribution",
+        ]:
             dist = overall_stats[dist_name]
-            dist["highly_consistent_pct"] = dist["highly_consistent"] / total_articles * 100
-            dist["moderately_consistent_pct"] = dist["moderately_consistent"] / total_articles * 100
+            dist["highly_consistent_pct"] = (
+                dist["highly_consistent"] / total_articles * 100
+            )
+            dist["moderately_consistent_pct"] = (
+                dist["moderately_consistent"] / total_articles * 100
+            )
             dist["inconsistent_pct"] = dist["inconsistent"] / total_articles * 100
 
     return overall_stats
 
 
-def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
+def perform_statistical_tests(scores_list: list[list[float]]) -> dict[str, Any]:
     """
     Perform statistical tests to validate consistency.
 
@@ -675,14 +772,18 @@ def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
         if len(scores) >= 3:  # Need at least 3 samples for Shapiro-Wilk
             try:
                 statistic, p_value = stats.shapiro(scores)
-                normality_results.append({
-                    "article_index": i,
-                    "shapiro_statistic": float(statistic),
-                    "shapiro_p_value": float(p_value),
-                    "is_normal": int(p_value > 0.05)
-                })
+                normality_results.append(
+                    {
+                        "article_index": i,
+                        "shapiro_statistic": float(statistic),
+                        "shapiro_p_value": float(p_value),
+                        "is_normal": int(p_value > 0.05),
+                    }
+                )
             except Exception as e:
-                logger.warning(f"Could not perform Shapiro-Wilk test for article {i}: {e}")
+                logger.warning(
+                    f"Could not perform Shapiro-Wilk test for article {i}: {e}"
+                )
 
     test_results["normality_tests"] = normality_results
 
@@ -692,13 +793,15 @@ def perform_statistical_tests(scores_list: List[List[float]]) -> Dict[str, Any]:
         test_results["overall_normality"] = {
             "normal_articles": normal_count,
             "total_tested": len(normality_results),
-            "normal_percentage": normal_count / len(normality_results) * 100
+            "normal_percentage": normal_count / len(normality_results) * 100,
         }
 
     return test_results
 
 
-def generate_visualizations(results: List[Dict], output_dir: Path, output_timestamp: str):
+def generate_visualizations(
+    results: list[dict], output_dir: Path, output_timestamp: str
+):
     """
     Generate visualization charts.
 
@@ -710,7 +813,9 @@ def generate_visualizations(results: List[Dict], output_dir: Path, output_timest
     logger.info("Generating visualizations...")
 
     # Extract data for plotting
-    articles_with_stats = [r for r in results if "statistics" in r and r["statistics"]["sample_size"] > 0]
+    articles_with_stats = [
+        r for r in results if "statistics" in r and r["statistics"]["sample_size"] > 0
+    ]
 
     if not articles_with_stats:
         logger.warning("No valid data for visualization")
@@ -718,113 +823,189 @@ def generate_visualizations(results: List[Dict], output_dir: Path, output_timest
 
     # Create figure with subplots
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('Sentiment Analyzer Consistency Analysis', fontsize=16, fontweight='bold')
+    fig.suptitle(
+        "Sentiment Analyzer Consistency Analysis", fontsize=16, fontweight="bold"
+    )
 
     # 1. Distribution of Standard Deviations
     std_devs = [r["statistics"]["std_dev"] for r in articles_with_stats]
     if std_devs and any(not np.isnan(val) for val in std_devs):
         std_devs_clean = [val for val in std_devs if not np.isnan(val)]
-        axes[0, 0].hist(std_devs_clean, bins=min(20, len(set(std_devs_clean))),
-                       alpha=0.7, color='skyblue', edgecolor='black')
-        axes[0, 0].set_title('Distribution of Score Standard Deviations')
-        axes[0, 0].set_xlabel('Standard Deviation')
-        axes[0, 0].set_ylabel('Frequency')
-        axes[0, 0].axvline(np.mean(std_devs_clean), color='red', linestyle='--',
-                           label=f'Mean: {np.mean(std_devs_clean):.3f}')
+        axes[0, 0].hist(
+            std_devs_clean,
+            bins=min(20, len(set(std_devs_clean))),
+            alpha=0.7,
+            color="skyblue",
+            edgecolor="black",
+        )
+        axes[0, 0].set_title("Distribution of Score Standard Deviations")
+        axes[0, 0].set_xlabel("Standard Deviation")
+        axes[0, 0].set_ylabel("Frequency")
+        axes[0, 0].axvline(
+            np.mean(std_devs_clean),
+            color="red",
+            linestyle="--",
+            label=f"Mean: {np.mean(std_devs_clean):.3f}",
+        )
         axes[0, 0].legend()
     else:
-        axes[0, 0].text(0.5, 0.5, 'No data available', ha='center', va='center',
-                       transform=axes[0, 0].transAxes)
-        axes[0, 0].set_title('Distribution of Score Standard Deviations')
+        axes[0, 0].text(
+            0.5,
+            0.5,
+            "No data available",
+            ha="center",
+            va="center",
+            transform=axes[0, 0].transAxes,
+        )
+        axes[0, 0].set_title("Distribution of Score Standard Deviations")
 
     # 2. Coefficient of Variation Distribution
     cvs = [r["statistics"]["cv"] for r in articles_with_stats]
     if cvs and any(not np.isnan(val) for val in cvs):
         cvs_clean = [val for val in cvs if not np.isnan(val)]
-        axes[0, 1].hist(cvs_clean, bins=min(20, len(set(cvs_clean))),
-                       alpha=0.7, color='lightcoral', edgecolor='black')
-        axes[0, 1].set_title('Distribution of Coefficient of Variation')
-        axes[0, 1].set_xlabel('Coefficient of Variation')
-        axes[0, 1].set_ylabel('Frequency')
-        axes[0, 1].axvline(0.05, color='green', linestyle='--', label='Highly Consistent (≤0.05)')
-        axes[0, 1].axvline(0.10, color='orange', linestyle='--', label='Moderately Consistent (≤0.10)')
+        axes[0, 1].hist(
+            cvs_clean,
+            bins=min(20, len(set(cvs_clean))),
+            alpha=0.7,
+            color="lightcoral",
+            edgecolor="black",
+        )
+        axes[0, 1].set_title("Distribution of Coefficient of Variation")
+        axes[0, 1].set_xlabel("Coefficient of Variation")
+        axes[0, 1].set_ylabel("Frequency")
+        axes[0, 1].axvline(
+            0.05, color="green", linestyle="--", label="Highly Consistent (≤0.05)"
+        )
+        axes[0, 1].axvline(
+            0.10, color="orange", linestyle="--", label="Moderately Consistent (≤0.10)"
+        )
         axes[0, 1].legend()
     else:
-        axes[0, 1].text(0.5, 0.5, 'No data available', ha='center', va='center',
-                       transform=axes[0, 1].transAxes)
-        axes[0, 1].set_title('Distribution of Coefficient of Variation')
+        axes[0, 1].text(
+            0.5,
+            0.5,
+            "No data available",
+            ha="center",
+            va="center",
+            transform=axes[0, 1].transAxes,
+        )
+        axes[0, 1].set_title("Distribution of Coefficient of Variation")
 
     # 3. Consistency Rate Distribution
-    consistency_rates = [r["statistics"]["consistency_rate"] for r in articles_with_stats]
+    consistency_rates = [
+        r["statistics"]["consistency_rate"] for r in articles_with_stats
+    ]
     if consistency_rates and any(not np.isnan(val) for val in consistency_rates):
-        consistency_rates_clean = [val for val in consistency_rates if not np.isnan(val)]
-        axes[1, 0].hist(consistency_rates_clean, bins=min(20, len(set(consistency_rates_clean))),
-                       alpha=0.7, color='lightgreen', edgecolor='black')
-        axes[1, 0].set_title('Distribution of Consistency Rates')
-        axes[1, 0].set_xlabel('Consistency Rate (scores within ±0.5 of mean)')
-        axes[1, 0].set_ylabel('Frequency')
-        axes[1, 0].axvline(np.mean(consistency_rates_clean), color='red', linestyle='--',
-                           label=f'Mean: {np.mean(consistency_rates_clean):.3f}')
+        consistency_rates_clean = [
+            val for val in consistency_rates if not np.isnan(val)
+        ]
+        axes[1, 0].hist(
+            consistency_rates_clean,
+            bins=min(20, len(set(consistency_rates_clean))),
+            alpha=0.7,
+            color="lightgreen",
+            edgecolor="black",
+        )
+        axes[1, 0].set_title("Distribution of Consistency Rates")
+        axes[1, 0].set_xlabel("Consistency Rate (scores within ±0.5 of mean)")
+        axes[1, 0].set_ylabel("Frequency")
+        axes[1, 0].axvline(
+            np.mean(consistency_rates_clean),
+            color="red",
+            linestyle="--",
+            label=f"Mean: {np.mean(consistency_rates_clean):.3f}",
+        )
         axes[1, 0].legend()
     else:
-        axes[1, 0].text(0.5, 0.5, 'No data available', ha='center', va='center',
-                       transform=axes[1, 0].transAxes)
-        axes[1, 0].set_title('Distribution of Consistency Rates')
+        axes[1, 0].text(
+            0.5,
+            0.5,
+            "No data available",
+            ha="center",
+            va="center",
+            transform=axes[1, 0].transAxes,
+        )
+        axes[1, 0].set_title("Distribution of Consistency Rates")
 
     # 4. Score Ranges
     ranges = [r["statistics"]["range"] for r in articles_with_stats]
     if ranges and any(not np.isnan(val) for val in ranges):
         ranges_clean = [val for val in ranges if not np.isnan(val)]
-        axes[1, 1].hist(ranges_clean, bins=min(20, len(set(ranges_clean))),
-                       alpha=0.7, color='gold', edgecolor='black')
-        axes[1, 1].set_title('Distribution of Score Ranges')
-        axes[1, 1].set_xlabel('Score Range (Max - Min)')
-        axes[1, 1].set_ylabel('Frequency')
-        axes[1, 1].axvline(np.mean(ranges_clean), color='red', linestyle='--',
-                           label=f'Mean: {np.mean(ranges_clean):.3f}')
+        axes[1, 1].hist(
+            ranges_clean,
+            bins=min(20, len(set(ranges_clean))),
+            alpha=0.7,
+            color="gold",
+            edgecolor="black",
+        )
+        axes[1, 1].set_title("Distribution of Score Ranges")
+        axes[1, 1].set_xlabel("Score Range (Max - Min)")
+        axes[1, 1].set_ylabel("Frequency")
+        axes[1, 1].axvline(
+            np.mean(ranges_clean),
+            color="red",
+            linestyle="--",
+            label=f"Mean: {np.mean(ranges_clean):.3f}",
+        )
         axes[1, 1].legend()
     else:
-        axes[1, 1].text(0.5, 0.5, 'No data available', ha='center', va='center',
-                       transform=axes[1, 1].transAxes)
-        axes[1, 1].set_title('Distribution of Score Ranges')
+        axes[1, 1].text(
+            0.5,
+            0.5,
+            "No data available",
+            ha="center",
+            va="center",
+            transform=axes[1, 1].transAxes,
+        )
+        axes[1, 1].set_title("Distribution of Score Ranges")
 
     plt.tight_layout()
 
     # Save the plot
     chart_path = output_dir / f"consistency_charts_{output_timestamp}.png"
-    plt.savefig(chart_path, dpi=300, bbox_inches='tight')
+    plt.savefig(chart_path, dpi=300, bbox_inches="tight")
     plt.close()
 
     logger.info(f"Charts saved to {chart_path}")
 
     # Create consistency classification pie chart
     consistency_counts = {
-        "Highly Consistent": sum(1 for r in articles_with_stats if r["statistics"]["cv"] <= 0.05),
-        "Moderately Consistent": sum(1 for r in articles_with_stats if 0.05 < r["statistics"]["cv"] <= 0.10),
-        "Inconsistent": sum(1 for r in articles_with_stats if r["statistics"]["cv"] > 0.10)
+        "Highly Consistent": sum(
+            1 for r in articles_with_stats if r["statistics"]["cv"] <= 0.05
+        ),
+        "Moderately Consistent": sum(
+            1 for r in articles_with_stats if 0.05 < r["statistics"]["cv"] <= 0.10
+        ),
+        "Inconsistent": sum(
+            1 for r in articles_with_stats if r["statistics"]["cv"] > 0.10
+        ),
     }
 
     if sum(consistency_counts.values()) > 0:
         fig, ax = plt.subplots(figsize=(10, 8))
-        colors = ['green', 'orange', 'red']
+        colors = ["green", "orange", "red"]
         wedges, texts, autotexts = ax.pie(
             consistency_counts.values(),
             labels=consistency_counts.keys(),
             colors=colors,
-            autopct='%1.1f%%',
-            startangle=90
+            autopct="%1.1f%%",
+            startangle=90,
         )
-        ax.set_title('Consistency Classification Distribution', fontsize=14, fontweight='bold')
+        ax.set_title(
+            "Consistency Classification Distribution", fontsize=14, fontweight="bold"
+        )
 
         # Make percentage text bold
         for autotext in autotexts:
-            autotext.set_color('white')
-            autotext.set_fontweight('bold')
+            autotext.set_color("white")
+            autotext.set_fontweight("bold")
 
         plt.tight_layout()
 
-        pie_chart_path = output_dir / f"consistency_classification_pie_{output_timestamp}.png"
-        plt.savefig(pie_chart_path, dpi=300, bbox_inches='tight')
+        pie_chart_path = (
+            output_dir / f"consistency_classification_pie_{output_timestamp}.png"
+        )
+        plt.savefig(pie_chart_path, dpi=300, bbox_inches="tight")
         plt.close()
 
         logger.info(f"Pie chart saved to {pie_chart_path}")
@@ -833,7 +1014,9 @@ def generate_visualizations(results: List[Dict], output_dir: Path, output_timest
     generate_enhanced_visualizations(articles_with_stats, output_dir, output_timestamp)
 
 
-def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir: Path, output_timestamp: str):
+def generate_enhanced_visualizations(
+    articles_with_stats: list[dict], output_dir: Path, output_timestamp: str
+):
     """
     Generate enhanced visualization charts with frequency analysis.
 
@@ -845,58 +1028,111 @@ def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir
     logger.info("Generating enhanced visualizations...")
 
     # Extract enhanced metrics for plotting
-    freq_weighted_cvs = [r["statistics"].get("frequency_weighted_cv", r["statistics"]["cv"])
-                         for r in articles_with_stats]
-    robust_cvs = [r["statistics"].get("robust_statistics", {}).get("robust_cv", r["statistics"]["cv"])
-                 for r in articles_with_stats]
-    mode_frequencies = [r["statistics"].get("frequency_metrics", {}).get("mode_frequency", 0.0)
-                       for r in articles_with_stats]
-    unique_values = [r["statistics"].get("frequency_metrics", {}).get("unique_values", 1)
-                    for r in articles_with_stats]
+    freq_weighted_cvs = [
+        r["statistics"].get("frequency_weighted_cv", r["statistics"]["cv"])
+        for r in articles_with_stats
+    ]
+    robust_cvs = [
+        r["statistics"]
+        .get("robust_statistics", {})
+        .get("robust_cv", r["statistics"]["cv"])
+        for r in articles_with_stats
+    ]
+    mode_frequencies = [
+        r["statistics"].get("frequency_metrics", {}).get("mode_frequency", 0.0)
+        for r in articles_with_stats
+    ]
+    unique_values = [
+        r["statistics"].get("frequency_metrics", {}).get("unique_values", 1)
+        for r in articles_with_stats
+    ]
 
     # Create enhanced figure with subplots
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('Enhanced Consistency Analysis with Frequency Metrics', fontsize=16, fontweight='bold')
+    fig.suptitle(
+        "Enhanced Consistency Analysis with Frequency Metrics",
+        fontsize=16,
+        fontweight="bold",
+    )
 
     # 1. Traditional vs Frequency-Weighted CV Comparison
     traditional_cvs = [r["statistics"]["cv"] for r in articles_with_stats]
     if traditional_cvs and freq_weighted_cvs:
-        axes[0, 0].scatter(traditional_cvs, freq_weighted_cvs, alpha=0.6, color='blue', s=30)
+        axes[0, 0].scatter(
+            traditional_cvs, freq_weighted_cvs, alpha=0.6, color="blue", s=30
+        )
         # Add diagonal line
         min_cv, max_cv = 0, max(max(traditional_cvs), max(freq_weighted_cvs))
-        axes[0, 0].plot([min_cv, max_cv], [min_cv, max_cv], 'r--', alpha=0.8, label='Perfect Correlation')
-        axes[0, 0].set_xlabel('Traditional CV')
-        axes[0, 0].set_ylabel('Frequency-Weighted CV')
-        axes[0, 0].set_title('Traditional vs Frequency-Weighted CV')
+        axes[0, 0].plot(
+            [min_cv, max_cv],
+            [min_cv, max_cv],
+            "r--",
+            alpha=0.8,
+            label="Perfect Correlation",
+        )
+        axes[0, 0].set_xlabel("Traditional CV")
+        axes[0, 0].set_ylabel("Frequency-Weighted CV")
+        axes[0, 0].set_title("Traditional vs Frequency-Weighted CV")
         axes[0, 0].legend()
         axes[0, 0].grid(True, alpha=0.3)
 
     # 2. Mode Frequency Distribution
     if mode_frequencies:
-        axes[0, 1].hist(mode_frequencies, bins=min(20, len(set(mode_frequencies))),
-                       alpha=0.7, color='purple', edgecolor='black')
-        axes[0, 1].set_xlabel('Mode Frequency')
-        axes[0, 1].set_ylabel('Number of Articles')
-        axes[0, 1].set_title('Distribution of Mode Frequencies')
-        axes[0, 1].axvline(np.mean(mode_frequencies), color='red', linestyle='--',
-                           label=f'Mean: {np.mean(mode_frequencies):.2f}')
-        axes[0, 1].axvline(0.8, color='green', linestyle='--', alpha=0.7, label='High Consistency (≥80%)')
+        axes[0, 1].hist(
+            mode_frequencies,
+            bins=min(20, len(set(mode_frequencies))),
+            alpha=0.7,
+            color="purple",
+            edgecolor="black",
+        )
+        axes[0, 1].set_xlabel("Mode Frequency")
+        axes[0, 1].set_ylabel("Number of Articles")
+        axes[0, 1].set_title("Distribution of Mode Frequencies")
+        axes[0, 1].axvline(
+            np.mean(mode_frequencies),
+            color="red",
+            linestyle="--",
+            label=f"Mean: {np.mean(mode_frequencies):.2f}",
+        )
+        axes[0, 1].axvline(
+            0.8,
+            color="green",
+            linestyle="--",
+            alpha=0.7,
+            label="High Consistency (≥80%)",
+        )
         axes[0, 1].legend()
         axes[0, 1].grid(True, alpha=0.3)
 
     # 3. CV vs Mode Frequency Scatter Plot
     if traditional_cvs and mode_frequencies:
-        scatter = axes[1, 0].scatter(mode_frequencies, traditional_cvs,
-                                   alpha=0.6, c=traditional_cvs, cmap='RdYlGn_r', s=30)
-        axes[1, 0].set_xlabel('Mode Frequency')
-        axes[1, 0].set_ylabel('Traditional CV')
-        axes[1, 0].set_title('CV vs Mode Frequency')
+        scatter = axes[1, 0].scatter(
+            mode_frequencies,
+            traditional_cvs,
+            alpha=0.6,
+            c=traditional_cvs,
+            cmap="RdYlGn_r",
+            s=30,
+        )
+        axes[1, 0].set_xlabel("Mode Frequency")
+        axes[1, 0].set_ylabel("Traditional CV")
+        axes[1, 0].set_title("CV vs Mode Frequency")
         # Add colorbar
-        plt.colorbar(scatter, ax=axes[1, 0], label='CV Value')
+        plt.colorbar(scatter, ax=axes[1, 0], label="CV Value")
         # Add threshold lines
-        axes[1, 0].axhline(0.05, color='green', linestyle='--', alpha=0.7, label='Highly Consistent')
-        axes[1, 0].axhline(0.10, color='orange', linestyle='--', alpha=0.7, label='Moderately Consistent')
-        axes[1, 0].axvline(0.8, color='blue', linestyle='--', alpha=0.7, label='High Mode Frequency')
+        axes[1, 0].axhline(
+            0.05, color="green", linestyle="--", alpha=0.7, label="Highly Consistent"
+        )
+        axes[1, 0].axhline(
+            0.10,
+            color="orange",
+            linestyle="--",
+            alpha=0.7,
+            label="Moderately Consistent",
+        )
+        axes[1, 0].axvline(
+            0.8, color="blue", linestyle="--", alpha=0.7, label="High Mode Frequency"
+        )
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3)
 
@@ -907,27 +1143,38 @@ def generate_enhanced_visualizations(articles_with_stats: List[Dict], output_dir
             unique_counts[val] = unique_counts.get(val, 0) + 1
 
         if unique_counts:
-            axes[1, 1].bar(unique_counts.keys(), unique_counts.values(),
-                           alpha=0.7, color='orange', edgecolor='black')
-            axes[1, 1].set_xlabel('Number of Unique Values')
-            axes[1, 1].set_ylabel('Number of Articles')
-            axes[1, 1].set_title('Distribution of Unique Score Values')
+            axes[1, 1].bar(
+                unique_counts.keys(),
+                unique_counts.values(),
+                alpha=0.7,
+                color="orange",
+                edgecolor="black",
+            )
+            axes[1, 1].set_xlabel("Number of Unique Values")
+            axes[1, 1].set_ylabel("Number of Articles")
+            axes[1, 1].set_title("Distribution of Unique Score Values")
             axes[1, 1].grid(True, alpha=0.3)
 
     plt.tight_layout()
 
     # Save the enhanced plot
-    enhanced_chart_path = output_dir / f"enhanced_consistency_charts_{output_timestamp}.png"
-    plt.savefig(enhanced_chart_path, dpi=300, bbox_inches='tight')
+    enhanced_chart_path = (
+        output_dir / f"enhanced_consistency_charts_{output_timestamp}.png"
+    )
+    plt.savefig(enhanced_chart_path, dpi=300, bbox_inches="tight")
     plt.close()
 
     logger.info(f"Enhanced charts saved to {enhanced_chart_path}")
 
     # Create enhanced classification comparison pie charts
-    create_enhanced_classification_charts(articles_with_stats, output_dir, output_timestamp)
+    create_enhanced_classification_charts(
+        articles_with_stats, output_dir, output_timestamp
+    )
 
 
-def create_enhanced_classification_charts(articles_with_stats: List[Dict], output_dir: Path, output_timestamp: str):
+def create_enhanced_classification_charts(
+    articles_with_stats: list[dict], output_dir: Path, output_timestamp: str
+):
     """
     Create comparison pie charts for traditional vs enhanced classifications.
 
@@ -938,54 +1185,78 @@ def create_enhanced_classification_charts(articles_with_stats: List[Dict], outpu
     """
     # Traditional classification counts
     traditional_counts = {
-        "Highly Consistent": sum(1 for r in articles_with_stats if r["statistics"]["cv"] <= 0.05),
-        "Moderately Consistent": sum(1 for r in articles_with_stats if 0.05 < r["statistics"]["cv"] <= 0.10),
-        "Inconsistent": sum(1 for r in articles_with_stats if r["statistics"]["cv"] > 0.10)
+        "Highly Consistent": sum(
+            1 for r in articles_with_stats if r["statistics"]["cv"] <= 0.05
+        ),
+        "Moderately Consistent": sum(
+            1 for r in articles_with_stats if 0.05 < r["statistics"]["cv"] <= 0.10
+        ),
+        "Inconsistent": sum(
+            1 for r in articles_with_stats if r["statistics"]["cv"] > 0.10
+        ),
     }
 
     # Enhanced classification counts
     enhanced_counts = {
-        "Highly Consistent": sum(1 for r in articles_with_stats
-                               if r["statistics"].get("enhanced_classification", {}).get("overall") == "Highly Consistent"),
-        "Moderately Consistent": sum(1 for r in articles_with_stats
-                                   if r["statistics"].get("enhanced_classification", {}).get("overall") == "Moderately Consistent"),
-        "Inconsistent": sum(1 for r in articles_with_stats
-                           if r["statistics"].get("enhanced_classification", {}).get("overall") == "Inconsistent")
+        "Highly Consistent": sum(
+            1
+            for r in articles_with_stats
+            if r["statistics"].get("enhanced_classification", {}).get("overall")
+            == "Highly Consistent"
+        ),
+        "Moderately Consistent": sum(
+            1
+            for r in articles_with_stats
+            if r["statistics"].get("enhanced_classification", {}).get("overall")
+            == "Moderately Consistent"
+        ),
+        "Inconsistent": sum(
+            1
+            for r in articles_with_stats
+            if r["statistics"].get("enhanced_classification", {}).get("overall")
+            == "Inconsistent"
+        ),
     }
 
     if sum(traditional_counts.values()) > 0 and sum(enhanced_counts.values()) > 0:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-        colors = ['green', 'orange', 'red']
+        colors = ["green", "orange", "red"]
 
         # Traditional classification pie chart
         wedges1, texts1, autotexts1 = ax1.pie(
             traditional_counts.values(),
             labels=traditional_counts.keys(),
             colors=colors,
-            autopct='%1.1f%%',
-            startangle=90
+            autopct="%1.1f%%",
+            startangle=90,
         )
-        ax1.set_title('Traditional Classification', fontsize=14, fontweight='bold')
+        ax1.set_title("Traditional Classification", fontsize=14, fontweight="bold")
 
         # Enhanced classification pie chart
         wedges2, texts2, autotexts2 = ax2.pie(
             enhanced_counts.values(),
             labels=enhanced_counts.keys(),
             colors=colors,
-            autopct='%1.1f%%',
-            startangle=90
+            autopct="%1.1f%%",
+            startangle=90,
         )
-        ax2.set_title('Enhanced Classification (Frequency-Adjusted)', fontsize=14, fontweight='bold')
+        ax2.set_title(
+            "Enhanced Classification (Frequency-Adjusted)",
+            fontsize=14,
+            fontweight="bold",
+        )
 
         # Make percentage text bold for both charts
         for autotext in autotexts1 + autotexts2:
-            autotext.set_color('white')
-            autotext.set_fontweight('bold')
+            autotext.set_color("white")
+            autotext.set_fontweight("bold")
 
         plt.tight_layout()
 
-        comparison_chart_path = output_dir / f"classification_comparison_{output_timestamp}.png"
-        plt.savefig(comparison_chart_path, dpi=300, bbox_inches='tight')
+        comparison_chart_path = (
+            output_dir / f"classification_comparison_{output_timestamp}.png"
+        )
+        plt.savefig(comparison_chart_path, dpi=300, bbox_inches="tight")
         plt.close()
 
         logger.info(f"Classification comparison chart saved to {comparison_chart_path}")
@@ -1006,26 +1277,30 @@ def make_json_safe(obj):
 
     if obj is None:
         return None
-    elif isinstance(obj, bool):
+    if isinstance(obj, bool):
         return int(obj)  # Convert boolean to int
-    elif isinstance(obj, (np.integer, np.int64, np.int32)):
+    if isinstance(obj, (np.integer, np.int64, np.int32)):
         return int(obj)
-    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+    if isinstance(obj, (np.floating, np.float64, np.float32)):
         if np.isnan(obj):
             return None  # Convert NaN to null
         return float(obj)
-    elif isinstance(obj, np.ndarray):
+    if isinstance(obj, np.ndarray):
         return make_json_safe(obj.tolist())
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         return {key: make_json_safe(value) for key, value in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)):
         return [make_json_safe(item) for item in obj]
-    else:
-        return obj
+    return obj
 
 
-def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
-                metadata: Dict, output_dir: Path):
+def save_results(
+    results: list[dict],
+    overall_stats: dict,
+    test_results: dict,
+    metadata: dict,
+    output_dir: Path,
+):
     """
     Save results in multiple formats.
 
@@ -1046,13 +1321,13 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
         "metadata": metadata,
         "overall_statistics": overall_stats,
         "statistical_tests": test_results,
-        "article_results": results
+        "article_results": results,
     }
 
     # Create debug dump file before JSON serialization
     dump_path = output_dir / "debug_results_dump.pkl"
     try:
-        with open(dump_path, 'wb') as f:
+        with open(dump_path, "wb") as f:
             pickle.dump(full_results, f)
         logger.info(f"Debug dump saved to {dump_path}")
     except Exception as e:
@@ -1067,7 +1342,7 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
         # Make data JSON-safe
         json_safe_results = make_json_safe(full_results)
 
-        with open(json_path, 'w', encoding='utf-8') as f:
+        with open(json_path, "w", encoding="utf-8") as f:
             json.dump(json_safe_results, f, indent=2, ensure_ascii=False)
         logger.info(f"JSON results saved to {json_path}")
 
@@ -1094,38 +1369,62 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
                 robust_stats = result["statistics"].get("robust_statistics", {})
                 enhanced_class = result["statistics"].get("enhanced_classification", {})
 
-                csv_data.append({
-                    "article_index": i + 1,
-                    "title": result["title"][:100] + "..." if len(result["title"]) > 100 else result["title"],
-                    "url": result["url"],
-                    "sample_size": result["statistics"]["sample_size"],
-                    "mean_score": result["statistics"]["mean"],
-                    "std_dev": result["statistics"]["std_dev"],
-                    "cv": result["statistics"]["cv"],
-                    "frequency_weighted_cv": result["statistics"].get("frequency_weighted_cv", result["statistics"]["cv"]),
-                    "robust_cv": robust_stats.get("robust_cv", result["statistics"]["cv"]),
-                    "min_score": result["statistics"]["min"],
-                    "max_score": result["statistics"]["max"],
-                    "range": result["statistics"]["range"],
-                    "consistency_rate": result["statistics"]["consistency_rate"],
-                    # Traditional classification
-                    "consistency_classification": classify_consistency(result["statistics"]["cv"]),
-                    # Enhanced frequency metrics
-                    "mode_value": freq_metrics.get("mode_value", result["statistics"]["mean"]),
-                    "mode_frequency": freq_metrics.get("mode_frequency", 0.0),
-                    "outlier_count": freq_metrics.get("outlier_count", 0),
-                    "unique_values": freq_metrics.get("unique_values", 1),
-                    # Enhanced classifications
-                    "traditional_classification": enhanced_class.get("traditional", classify_consistency(result["statistics"]["cv"])),
-                    "frequency_adjusted_classification": enhanced_class.get("frequency_adjusted", classify_consistency(result["statistics"]["cv"])),
-                    "robust_classification": enhanced_class.get("robust", classify_consistency(result["statistics"]["cv"])),
-                    "overall_classification": enhanced_class.get("overall", classify_consistency(result["statistics"]["cv"]))
-                })
+                csv_data.append(
+                    {
+                        "article_index": i + 1,
+                        "title": (
+                            result["title"][:100] + "..."
+                            if len(result["title"]) > 100
+                            else result["title"]
+                        ),
+                        "url": result["url"],
+                        "sample_size": result["statistics"]["sample_size"],
+                        "mean_score": result["statistics"]["mean"],
+                        "std_dev": result["statistics"]["std_dev"],
+                        "cv": result["statistics"]["cv"],
+                        "frequency_weighted_cv": result["statistics"].get(
+                            "frequency_weighted_cv", result["statistics"]["cv"]
+                        ),
+                        "robust_cv": robust_stats.get(
+                            "robust_cv", result["statistics"]["cv"]
+                        ),
+                        "min_score": result["statistics"]["min"],
+                        "max_score": result["statistics"]["max"],
+                        "range": result["statistics"]["range"],
+                        "consistency_rate": result["statistics"]["consistency_rate"],
+                        # Traditional classification
+                        "consistency_classification": classify_consistency(
+                            result["statistics"]["cv"]
+                        ),
+                        # Enhanced frequency metrics
+                        "mode_value": freq_metrics.get(
+                            "mode_value", result["statistics"]["mean"]
+                        ),
+                        "mode_frequency": freq_metrics.get("mode_frequency", 0.0),
+                        "outlier_count": freq_metrics.get("outlier_count", 0),
+                        "unique_values": freq_metrics.get("unique_values", 1),
+                        # Enhanced classifications
+                        "traditional_classification": enhanced_class.get(
+                            "traditional",
+                            classify_consistency(result["statistics"]["cv"]),
+                        ),
+                        "frequency_adjusted_classification": enhanced_class.get(
+                            "frequency_adjusted",
+                            classify_consistency(result["statistics"]["cv"]),
+                        ),
+                        "robust_classification": enhanced_class.get(
+                            "robust", classify_consistency(result["statistics"]["cv"])
+                        ),
+                        "overall_classification": enhanced_class.get(
+                            "overall", classify_consistency(result["statistics"]["cv"])
+                        ),
+                    }
+                )
 
         if csv_data:
             df = pd.DataFrame(csv_data)
             csv_path = output_dir / f"consistency_summary_{output_timestamp}.csv"
-            df.to_csv(csv_path, index=False, encoding='utf-8')
+            df.to_csv(csv_path, index=False, encoding="utf-8")
             logger.info(f"CSV summary saved to {csv_path}")
 
     # Generate and save HTML report
@@ -1135,7 +1434,7 @@ def save_results(results: List[Dict], overall_stats: Dict, test_results: Dict,
     generate_visualizations(results, output_dir, output_timestamp)
 
 
-def generate_html_report(results: Dict, output_dir: Path):
+def generate_html_report(results: dict, output_dir: Path):
     """
     Generate an HTML report with results and visualizations.
 
@@ -1262,19 +1561,19 @@ def generate_html_report(results: Dict, output_dir: Path):
     """
 
     html_path = output_dir / f"consistency_report_{output_timestamp}.html"
-    with open(html_path, 'w', encoding='utf-8') as f:
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     logger.info(f"HTML report saved to {html_path}")
 
 
-def format_overall_stats_html(stats: Dict) -> str:
+def format_overall_stats_html(stats: dict) -> str:
     """Format overall statistics for HTML display."""
     if not stats:
         return "<p>No statistics available</p>"
 
-    consistency_dist = stats.get('consistency_distribution', {})
-    overall_dist = stats.get('overall_classification_distribution', {})
+    consistency_dist = stats.get("consistency_distribution", {})
+    overall_dist = stats.get("overall_classification_distribution", {})
 
     html = f"""
         <div class="metric">
@@ -1344,7 +1643,7 @@ def format_overall_stats_html(stats: Dict) -> str:
     return html
 
 
-def format_article_results_html(articles: List[Dict]) -> str:
+def format_article_results_html(articles: list[dict]) -> str:
     """Format article results for HTML table display."""
     if not articles:
         return "<p>No article results available</p>"
@@ -1420,24 +1719,31 @@ def main():
         news_dir=args.news_dir,
         iterations=args.iterations,
         timeout=args.timeout,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
     )
 
-def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news", iterations=10, timeout=0.0, output_dir="src/sentiment_analysis/consistency"):
+
+def run_consistency_test(
+    input_file=None,
+    news_dir="src/sentiment_analysis/news",
+    iterations=10,
+    timeout=0.0,
+    output_dir="src/sentiment_analysis/consistency",
+):
     """
     Run the consistency test with explicit parameters.
-    
+
     This function contains the core logic for running sentiment consistency tests.
     It loads articles, runs multiple sentiment analysis iterations, calculates statistics,
     and saves results to timestamped output directories.
-    
+
     Args:
         input_file: Manual input file path (optional - auto-detects from news_dir if None)
         news_dir: Directory containing news articles (default: "src/sentiment_analysis/news")
         iterations: Number of sentiment analysis iterations per article (default: 10)
         timeout: Timeout in seconds between API calls to avoid rate limiting (default: 0.0)
         output_dir: Base directory for output files (default: "src/sentiment_analysis/consistency")
-    
+
     Returns:
         dict: Dictionary containing results and metadata, or None if failed
     """
@@ -1450,7 +1756,9 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
         logger.info("🔍 Auto-detecting latest news file...")
         latest_file = find_latest_news_file(news_dir)
         if not latest_file:
-            logger.error("❌ Error: No news files found in src/sentiment_analysis/news/")
+            logger.error(
+                "❌ Error: No news files found in src/sentiment_analysis/news/"
+            )
             logger.error("Please run the RSS fetcher first to generate news files.")
             sys.exit(1)
         input_file = latest_file
@@ -1483,7 +1791,9 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
             result["statistics"] = calculate_article_statistics(result["scores"])
             scores_list.append(result["scores"])
         else:
-            logger.warning(f"No scores collected for article: {result['title'][:50]}...")
+            logger.warning(
+                f"No scores collected for article: {result['title'][:50]}..."
+            )
 
     # Calculate overall statistics
     overall_stats = calculate_overall_statistics(results)
@@ -1501,7 +1811,9 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
         logger.info(f"📋 Using input timestamp: {timestamp}")
     else:
         # Fallback: generate new timestamp if extraction fails
-        logger.warning("⚠️  Could not extract timestamp from input filename, generating new timestamp")
+        logger.warning(
+            "⚠️  Could not extract timestamp from input filename, generating new timestamp"
+        )
         now = datetime.now()
         # Create sortable prefix: subtract from max timestamp to invert ordering
         sortable_timestamp = f"{99999999999999 - int(now.timestamp())}"
@@ -1526,7 +1838,7 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
         "temperature": 0.1,
         "input_file": input_file,
         "input_timestamp": timestamp,
-        "timeout_between_calls": timeout
+        "timeout_between_calls": timeout,
     }
 
     # Save results
@@ -1537,28 +1849,50 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
     logger.info("CONSISTENCY TEST SUMMARY")
     logger.info("=" * 60)
     logger.info(f"Total articles processed: {overall_stats.get('total_articles', 0)}")
-    logger.info(f"Average standard deviation: {overall_stats.get('avg_std_dev', 0):.3f}")
-    logger.info(f"Average coefficient of variation: {overall_stats.get('avg_cv', 0):.3f}")
-    logger.info(f"Average consistency rate: {overall_stats.get('avg_consistency_rate', 0):.1%}")
+    logger.info(
+        f"Average standard deviation: {overall_stats.get('avg_std_dev', 0):.3f}"
+    )
+    logger.info(
+        f"Average coefficient of variation: {overall_stats.get('avg_cv', 0):.3f}"
+    )
+    logger.info(
+        f"Average consistency rate: {overall_stats.get('avg_consistency_rate', 0):.1%}"
+    )
     logger.info(f"Average score range: {overall_stats.get('avg_range', 0):.3f}")
 
-    consistency_dist = overall_stats.get('consistency_distribution', {})
-    overall_dist = overall_stats.get('overall_classification_distribution', {})
+    consistency_dist = overall_stats.get("consistency_distribution", {})
+    overall_dist = overall_stats.get("overall_classification_distribution", {})
 
     logger.info("Traditional Classification:")
-    logger.info(f"  Highly consistent articles: {consistency_dist.get('highly_consistent_pct', 0):.1f}%")
-    logger.info(f"  Moderately consistent articles: {consistency_dist.get('moderately_consistent_pct', 0):.1f}%")
-    logger.info(f"  Inconsistent articles: {consistency_dist.get('inconsistent_pct', 0):.1f}%")
+    logger.info(
+        f"  Highly consistent articles: {consistency_dist.get('highly_consistent_pct', 0):.1f}%"
+    )
+    logger.info(
+        f"  Moderately consistent articles: {consistency_dist.get('moderately_consistent_pct', 0):.1f}%"
+    )
+    logger.info(
+        f"  Inconsistent articles: {consistency_dist.get('inconsistent_pct', 0):.1f}%"
+    )
 
     logger.info("Enhanced Classification (Frequency-Adjusted):")
-    logger.info(f"  Highly consistent articles: {overall_dist.get('highly_consistent_pct', 0):.1f}%")
-    logger.info(f"  Moderately consistent articles: {overall_dist.get('moderately_consistent_pct', 0):.1f}%")
-    logger.info(f"  Inconsistent articles: {overall_dist.get('inconsistent_pct', 0):.1f}%")
+    logger.info(
+        f"  Highly consistent articles: {overall_dist.get('highly_consistent_pct', 0):.1f}%"
+    )
+    logger.info(
+        f"  Moderately consistent articles: {overall_dist.get('moderately_consistent_pct', 0):.1f}%"
+    )
+    logger.info(
+        f"  Inconsistent articles: {overall_dist.get('inconsistent_pct', 0):.1f}%"
+    )
 
-    logger.info(f"Enhanced Metrics:")
-    logger.info(f"  Average frequency-weighted CV: {overall_stats.get('avg_frequency_weighted_cv', 0):.3f}")
+    logger.info("Enhanced Metrics:")
+    logger.info(
+        f"  Average frequency-weighted CV: {overall_stats.get('avg_frequency_weighted_cv', 0):.3f}"
+    )
     logger.info(f"  Average robust CV: {overall_stats.get('avg_robust_cv', 0):.3f}")
-    logger.info(f"  Average mode frequency: {overall_stats.get('avg_mode_frequency', 0):.1%}")
+    logger.info(
+        f"  Average mode frequency: {overall_stats.get('avg_mode_frequency', 0):.1%}"
+    )
 
     logger.info("=" * 60)
     logger.info(f"📁 Results saved to timestamped subfolder: {output_dir}")
@@ -1568,16 +1902,18 @@ def run_consistency_test(input_file=None, news_dir="src/sentiment_analysis/news"
     logger.info(f"  • HTML: consistency_report_{timestamp}.html")
     logger.info(f"  • Traditional Charts: consistency_charts_{timestamp}.png")
     logger.info(f"  • Enhanced Charts: enhanced_consistency_charts_{timestamp}.png")
-    logger.info(f"  • Classification Comparison: classification_comparison_{timestamp}.png")
+    logger.info(
+        f"  • Classification Comparison: classification_comparison_{timestamp}.png"
+    )
     logger.info("=" * 60)
-    
+
     return {
         "results": results,
         "overall_stats": overall_stats,
         "test_results": test_results,
         "metadata": metadata,
         "output_dir": output_dir,
-        "timestamp": timestamp
+        "timestamp": timestamp,
     }
 
 

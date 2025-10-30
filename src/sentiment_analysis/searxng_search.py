@@ -1,24 +1,30 @@
+"""
+SearXNG search interface.
+
+This module provides an interface to SearXNG search engine for fetching
+article content and other search results asynchronously.
+"""
+
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional
-from dotenv import load_dotenv
-import aiohttp
 import asyncio
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
+
+import aiohttp
+from dotenv import load_dotenv
 
 from sentiment_analysis.utils import setup_logging
 
 # Configure logging
 logger = setup_logging(__name__)
 
+
 async def fetch_search_results(
-    session: aiohttp.ClientSession,
-    base_url: str,
-    query: str,
-    category: Optional[str]
-) -> List[Dict[str, Any]]:
+    session: aiohttp.ClientSession, base_url: str, query: str, category: str | None
+) -> list[dict[str, Any]]:
     """
     Fetches search results for a single query asynchronously.
 
@@ -60,7 +66,9 @@ async def fetch_search_results(
 
         if response.status != 200:
             response_text = await response.text()
-            raise Exception(f"Failed to fetch search results for query '{query}': {response.status} {response.reason}")
+            raise Exception(
+                f"Failed to fetch search results for query '{query}': {response.status} {response.reason}"
+            )
 
         data = await response.json()
         results = data.get("results", [])
@@ -71,11 +79,12 @@ async def fetch_search_results(
 
         return results
 
+
 def process_search_results(
-    all_results: List[Dict[str, Any]],
-    category: Optional[str] = None,
-    max_results: int = 10
-) -> List[Dict[str, Any]]:
+    all_results: list[dict[str, Any]],
+    category: str | None = None,
+    max_results: int = 10,
+) -> list[dict[str, Any]]:
     """
     Processes and filters search results.
 
@@ -94,30 +103,38 @@ def process_search_results(
     seen_urls = set()
     unique_results = []
     for result in sorted_results:
-        if "content" not in result or "title" not in result or "url" not in result or "query" not in result:
+        if (
+            "content" not in result
+            or "title" not in result
+            or "url" not in result
+            or "query" not in result
+        ):
             continue
         if result["url"] not in seen_urls:
             unique_results.append(result)
             if "metadata" in result:
                 result["metadata"] = result["metadata"]
-            if "publishedDate" in result and result["publishedDate"]:
+            if result.get("publishedDate"):
                 result["timestamp"] = result["publishedDate"]
             seen_urls.add(result["url"])
 
     # Filter results to include only those with the correct category if it is set
     if category:
-        filtered_results = [result for result in unique_results if result.get("category") == category]
+        filtered_results = [
+            result for result in unique_results if result.get("category") == category
+        ]
     else:
         filtered_results = unique_results
 
     return filtered_results[:max_results]
 
+
 async def searxng_search_async(
-    queries: List[str],
+    queries: list[str],
     base_url: str,
-    category: Optional[str] = None,
-    max_results: int = 10
-) -> Dict[str, Any]:
+    category: str | None = None,
+    max_results: int = 10,
+) -> dict[str, Any]:
     """
     Runs SearXNG search asynchronously with the given parameters.
 
@@ -134,7 +151,10 @@ async def searxng_search_async(
         Exception: If the request to SearXNG fails.
     """
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_search_results(session, base_url, query, category) for query in queries]
+        tasks = [
+            fetch_search_results(session, base_url, query, category)
+            for query in queries
+        ]
         results = await asyncio.gather(*tasks)
 
     all_results = [item for sublist in results for item in sublist]
@@ -150,19 +170,20 @@ async def searxng_search_async(
                 "url": result["url"],
                 "timestamp": result.get("publishedDate", None),
                 "metadata": result.get("metadata", None),
-                "query": result["query"]
+                "query": result["query"],
             }
             for result in final_results
         ],
         "category": category,
     }
 
+
 def searxng_search(
-    queries: List[str],
+    queries: list[str],
     base_url: str,
-    category: Optional[str] = None,
-    max_results: int = 10
-) -> Dict[str, Any]:
+    category: str | None = None,
+    max_results: int = 10,
+) -> dict[str, Any]:
     """
     Runs SearXNG search synchronously with the given parameters.
 
@@ -184,15 +205,25 @@ def searxng_search(
     final_base_url = base_url or os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
 
     with ThreadPoolExecutor() as executor:
-        return executor.submit(asyncio.run, searxng_search_async(queries, final_base_url, category, max_results)).result()
+        return executor.submit(
+            asyncio.run,
+            searxng_search_async(queries, final_base_url, category, max_results),
+        ).result()
 
-__all__ = ["searxng_search"]
+
+# Define the public API for this module
+__all__ = [
+    "fetch_search_results",
+    "process_search_results",
+    "searxng_search",
+    "searxng_search_async",
+]
+
 
 if __name__ == "__main__":
     # Example usage
     results = searxng_search(
-        queries=["weather in paris", "what is paris known for"],
-        max_results=2
+        queries=["weather in paris", "what is paris known for"], max_results=2
     )
 
-    logger.debug("Search results: {}", json.dumps(results, indent=2))
+    logger.debug(f"Search results: {json.dumps(results, indent=2)}")
