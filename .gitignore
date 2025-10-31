@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Dev
+.claude
+.serena
+/temp
+src/sentiment_analysis/sentiments
+src/sentiment_analysis/charts
+src/sentiment_analysis/consistency
+src/sentiment_analysis/news
+
+# Twitter/X authentication state files (contain sensitive session data)
+twitter_auth/.auth/
