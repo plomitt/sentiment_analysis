@@ -139,10 +139,11 @@ def fetch_news_rss(
             if no_content
             else f"({articles_with_content} with content)"
         )
-        logger.info(f"Fetched {len(articles)} articles {content_msg}")
+        logger.info(f"Fetched {len(articles)} articles {content_msg} from RSS feed")
 
         return articles
-    logger.info("No entries found")
+
+    logger.warning("No articles fetched from RSS feed")
     return []
 
 

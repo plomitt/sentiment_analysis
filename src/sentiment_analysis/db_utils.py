@@ -68,12 +68,6 @@ def save_analyzed_article_to_db(
     Raises:
         ValueError: If required fields are missing or invalid.
         OperationalError: If database operation fails.
-
-    Example:
-        >>> with psycopg.connect(conn_string) as conn:
-        ...     with conn.cursor() as cur:
-        ...         success = save_analyzed_article_to_db(article, cur)
-        >>> print(f"Save successful: {success}")
     """
     if logger is None:
         logger = setup_logging(__name__)

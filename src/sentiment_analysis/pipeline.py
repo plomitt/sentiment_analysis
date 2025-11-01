@@ -1,6 +1,5 @@
 import psycopg
-from pprint import pprint
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Set
 
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_analyzed_article_to_db
 from sentiment_analysis.news_rss_fetcher import fetch_news_rss
@@ -46,7 +45,86 @@ def get_analyzed_article(article, client):
         "sentiment_reasoning": reasoning
     }
 
-    return analyzed_article    
+    return analyzed_article
+
+
+def get_existing_article_urls() -> Set[str]:
+    """
+    Fetch all existing article URLs from the database.
+
+    Returns:
+        Set[str]: Set of URLs already stored in the database.
+
+    Raises:
+        OperationalError: If database query fails.
+    """
+    try:
+        conn_string = get_postgres_connection_string(logger)
+
+        with psycopg.connect(conn_string) as conn:
+            with conn.cursor() as cur:
+                logger.debug("Fetching existing article URLs from database")
+                cur.execute("SELECT url FROM articles")
+                existing_urls = {url for (url,) in cur.fetchall()}
+                logger.debug(f"Found {len(existing_urls)} existing articles in database")
+                return existing_urls
+
+    except Exception as e:
+        logger.error(f"Failed to fetch existing article URLs: {e}")
+        raise
+
+
+def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Filter out articles that already exist in the database.
+
+    Performs efficient duplicate detection using a single database query
+    and set-based O(1) lookups, preserving original article order.
+    This prevents unnecessary sentiment analysis on articles already
+    processed and stored in the database.
+
+    Args:
+        fetched_articles: List of article dictionaries to filter. Each article
+            should contain a 'url' key for duplicate detection.
+
+    Returns:
+        List[Dict[str, Any]]: Filtered list containing only new articles
+            that don't exist in the database, preserving original order.
+    """
+    if not fetched_articles:
+        logger.debug("No articles to filter")
+        return []
+
+    try:
+        # Get existing URLs from database (single query for efficiency)
+        existing_urls = get_existing_article_urls()
+
+        # Filter duplicates while preserving order using set-based O(1) lookups
+        filtered_articles = []
+        duplicates_count = 0
+
+        for article in fetched_articles:
+            article_url = article.get("url")
+            if article_url and article_url not in existing_urls:
+                filtered_articles.append(article)
+            else:
+                duplicates_count += 1
+                logger.debug(f"Skipping duplicate article: {article_url}")
+
+        # Log filtering results
+        if duplicates_count > 0:
+            logger.info(f"Filtered out {duplicates_count} duplicate articles")
+            logger.info(f"Retained {len(filtered_articles)} new articles for processing")
+        else:
+            logger.info("No duplicates found, all articles are new")
+
+        return filtered_articles
+
+    except Exception as e:
+        logger.warning(f"Failed to filter duplicates, processing all articles: {e}")
+        logger.info("Falling back to processing all articles without filtering")
+        return fetched_articles
+
 
 def process_articles(fetched_articles: List[Dict[str, Any]]):
     """
@@ -59,10 +137,6 @@ def process_articles(fetched_articles: List[Dict[str, Any]]):
     Args:
         fetched_articles: List of article dictionaries to process. Each article
             should contain keys: title, body, source, url, timestamp, unix_timestamp.
-
-    Example:
-        >>> articles = fetch_news_rss(query="bitcoin", count=10)
-        >>> process_articles(articles)
     """
     if not fetched_articles:
         logger.info("No articles to process")
@@ -133,14 +207,22 @@ def run_pipeline():
     """
     try:
         # Fetch Bitcoin news articles
-        fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=False)
+        fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=True)
         logger.info(f"Fetched {len(fetched_articles)} articles from RSS feed")
 
         if not fetched_articles:
             logger.warning("No articles fetched from RSS feed")
             return
 
-        process_articles(fetched_articles)
+        # Filter out duplicates before processing
+        filtered_articles = filter_duplicate_articles(fetched_articles)
+        if not filtered_articles:
+            logger.info("All articles are duplicates, no new articles to process")
+            return
+
+        # Analyze sentiment and save to db
+        logger.info(f"Processing {len(filtered_articles)} unique articles")
+        process_articles(filtered_articles)
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
