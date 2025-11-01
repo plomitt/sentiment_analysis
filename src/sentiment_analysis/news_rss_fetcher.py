@@ -94,10 +94,11 @@ def fetch_news_rss(
 
             article = {
                 "title": entry.title,
+                "body": "",
+                "source": entry.source.title,
                 "url": entry.link,
                 "timestamp": entry.published,
                 "unix_timestamp": calendar.timegm(entry.published_parsed),
-                "source": entry.source.title,
             }
 
             # Fetch article content using SearXNG if not disabled
@@ -115,33 +116,19 @@ def fetch_news_rss(
                         first_result = search_results["results"][0]
                         if first_result.get("content"):
                             article["body"] = first_result["content"]
-                            logger.info(
-                                f"Successfully fetched content ({len(first_result['content'])} chars)"
-                            )
+                            logger.info(f"Successfully fetched content ({len(first_result['content'])} chars)")
                         else:
-                            article["body"] = ""
-                            logger.warning(
-                                f"No content found in search result for: {entry.title[:50]}"
-                            )
+                            logger.warning(f"No content found in search result for: {entry.title[:50]}")
                     else:
-                        article["body"] = ""
-                        logger.warning(
-                            f"No search results found for: {entry.title[:50]}"
-                        )
+                        logger.warning(f"No search results found for: {entry.title[:50]}")
 
                     # Add delay between requests to be respectful
-                    if (
-                        i < len(feed.entries[:count]) - 1
-                    ):  # Don't delay after the last article
+                    if (i < len(feed.entries[:count]) - 1):  # Don't delay after the last article
                         time.sleep(request_delay)
 
                 except Exception as e:
-                    article["body"] = ""
-                    logger.error(
-                        f"Failed to fetch content for '{entry.title[:50]}': {e!s}"
-                    )
+                    logger.error(f"Failed to fetch content for '{entry.title[:50]}': {e!s}")
             else:
-                article["body"] = ""
                 logger.info("Skipping content fetch due to no_content parameter")
 
             articles.append(article)

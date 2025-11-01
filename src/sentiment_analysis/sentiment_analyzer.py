@@ -55,6 +55,7 @@ class ArticleWithSentiment(BaseModel):
 
     title: str = Field(..., description="Article title")
     body: str | None = Field(None, description="Article body content")
+    source: str | None = Field(None, description="Article source")
     timestamp: str = Field(..., description="Article timestamp")
     url: str = Field(..., description="Article URL")
     unix_timestamp: int | None = Field(
@@ -185,12 +186,11 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
         try:
             # Extract article data
             title = article.get("title", "")
-            body = article.get(
-                "body", ""
-            )  # Returns empty string if body field doesn't exist
-            timestamp = article.get("timestamp", "")
+            body = article.get("body", "")
+            source = article.get("source", "")
             url = article.get("url", "")
-            unix_timestamp = article.get("unix_timestamp")
+            timestamp = article.get("timestamp", "")
+            unix_timestamp = article.get("unix_timestamp", "")
 
             # Analyze sentiment
             sentiment = analyze_article(title, body, client)
@@ -198,9 +198,10 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
             # Create result object
             article_with_sentiment = ArticleWithSentiment(
                 title=title,
-                body=body if body else None,  # Store None if body was empty/missing
-                timestamp=timestamp,
+                body=body,
+                source=source,
                 url=url,
+                timestamp=timestamp,
                 unix_timestamp=unix_timestamp,
                 sentiment=sentiment,
             )

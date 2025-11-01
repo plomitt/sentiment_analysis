@@ -13,7 +13,9 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+
+from dotenv import load_dotenv
 
 
 def extract_timestamp_from_filename(
@@ -278,6 +280,37 @@ def ensure_directory(directory_path: str) -> None:
         raise Exception(error_msg)
 
 
+def validate_env_config(required_vars: list[str], logger: Optional[logging.Logger] = None) -> bool:
+    """
+    Validate that required environment variables are set.
+
+    Args:
+        required_vars: List of required environment variable names.
+        logger: Optional logger instance. If not provided, a new one will be created.
+
+    Returns:
+        bool: True if all required environment variables are present, False otherwise.
+    """
+    load_dotenv()
+
+    if logger is None:
+        logger = setup_logging(__name__)
+
+    missing_vars = []
+
+    # Check required variables
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {missing_vars}")
+        return False
+
+    logger.info(f"Environment variables configuration validated.")
+    return True
+
+
 # Define the public API for this module
 __all__ = [
     "ensure_directory",
@@ -287,4 +320,5 @@ __all__ = [
     "make_timestamped_filename",
     "save_json_data",
     "setup_logging",
+    "validate_env_config",
 ]
