@@ -18,9 +18,33 @@ from typing import Any, Optional
 from dotenv import load_dotenv
 
 
-def extract_timestamp_from_filename(
-    filepath: str, name_start: str, logger: logging.Logger | None = None
-) -> str | None:
+def setup_logging(name: str | None = None, level: int = logging.INFO, format_string: str | None = None) -> logging.Logger:
+    """
+    Standardized logging setup with optional custom format.
+
+    Args:
+        name: Logger name (defaults to __name__ of calling module).
+        level: Logging level (defaults to INFO).
+        format_string: Custom format string (defaults to standard format).
+
+    Returns:
+        Configured logger instance.
+    """
+    if format_string is None:
+        format_string = "%(asctime)s - %(levelname)s - %(message)s"
+
+    # Only configure basic logging if not already configured
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=level, format=format_string)
+
+    logger_name = name if name else __name__
+    return logging.getLogger(logger_name)
+
+
+logger = setup_logging(__name__)
+
+
+def extract_timestamp_from_filename(filepath: str, name_start: str) -> str | None:
     """
     Extract timestamp from a news filename for use in output filename.
 
@@ -30,13 +54,10 @@ def extract_timestamp_from_filename(
     Args:
         filepath: Full path to the input file.
         name_start: Expected filename prefix (e.g., "news", "sentiments").
-        logger: Optional logger instance for logging.
 
     Returns:
         Timestamp string (sortable_readable) or None if extraction fails.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
 
     try:
         logger.debug(f"Extracting timestamp from: {filepath}, name_start: {name_start}")
@@ -70,7 +91,6 @@ def make_timestamped_filename(
     input_name: str | None = None,
     output_name: str | None = None,
     output_filetype: str = "json",
-    logger: logging.Logger | None = None,
 ) -> str | None:
     """
     Generate timestamped filename using timestamp from input file or generate new one.
@@ -80,19 +100,15 @@ def make_timestamped_filename(
         input_name: Expected filename prefix for timestamp extraction.
         output_name: Desired output filename prefix.
         output_filetype: Desired output file extension (defaults to "json").
-        logger: Optional logger instance for logging.
 
     Returns:
         Generated filename with timestamp, or None if generation fails.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
     try:
         timestamp = None
 
         if input_file and input_name:
-            timestamp = extract_timestamp_from_filename(input_file, input_name, logger)
+            timestamp = extract_timestamp_from_filename(input_file, input_name)
             logger.info("Timestamp extracted from input file")
 
         if not timestamp:
@@ -114,38 +130,12 @@ def make_timestamped_filename(
         return None
 
 
-def setup_logging(
-    name: str | None = None, level: int = logging.INFO, format_string: str | None = None
-) -> logging.Logger:
-    """
-    Standardized logging setup with optional custom format.
-
-    Args:
-        name: Logger name (defaults to __name__ of calling module).
-        level: Logging level (defaults to INFO).
-        format_string: Custom format string (defaults to standard format).
-
-    Returns:
-        Configured logger instance.
-    """
-    if format_string is None:
-        format_string = "%(asctime)s - %(levelname)s - %(message)s"
-
-    # Only configure basic logging if not already configured
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=level, format=format_string)
-
-    logger_name = name if name else __name__
-    return logging.getLogger(logger_name)
-
-
-def load_json_data(file_path: str, logger: logging.Logger | None = None) -> Any:
+def load_json_data(file_path: str) -> Any:
     """
     Generic JSON file loading with standardized error handling.
 
     Args:
         file_path: Path to the JSON file to load.
-        logger: Optional logger instance for error reporting.
 
     Returns:
         Loaded JSON data.
@@ -155,9 +145,6 @@ def load_json_data(file_path: str, logger: logging.Logger | None = None) -> Any:
         json.JSONDecodeError: If the file contains invalid JSON.
         Exception: For other file reading errors.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
     try:
         with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -182,7 +169,6 @@ def load_json_data(file_path: str, logger: logging.Logger | None = None) -> Any:
 def save_json_data(
     data: Any,
     file_path: str,
-    logger: logging.Logger | None = None,
     indent: int = 4,
     ensure_ascii: bool = False,
 ) -> None:
@@ -192,16 +178,12 @@ def save_json_data(
     Args:
         data: Data to save as JSON.
         file_path: Path where to save the JSON file.
-        logger: Optional logger instance for error reporting.
         indent: JSON indentation (defaults to 4).
         ensure_ascii: Whether to escape non-ASCII characters (defaults to False).
 
     Raises:
         Exception: For file writing errors.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
     try:
         # Ensure directory exists
         directory = os.path.dirname(file_path)
@@ -223,7 +205,6 @@ def find_latest_file(
     directory: str,
     pattern_prefix: str,
     file_extension: str = "json",
-    logger: logging.Logger | None = None,
 ) -> str | None:
     """
     Generic function to find the latest file by pattern matching.
@@ -232,14 +213,10 @@ def find_latest_file(
         directory: Directory to search in.
         pattern_prefix: File name prefix pattern (e.g., "news", "sentiments").
         file_extension: File extension to match (defaults to "json").
-        logger: Optional logger instance for error reporting.
 
     Returns:
         Path to the latest file, or None if no files found.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
     try:
         pattern = os.path.join(directory, f"{pattern_prefix}_*.{file_extension}")
         files = glob.glob(pattern)
@@ -280,7 +257,7 @@ def ensure_directory(directory_path: str) -> None:
         raise Exception(error_msg)
 
 
-def validate_env_config(required_vars: list[str], logger: Optional[logging.Logger] = None) -> bool:
+def validate_env_config(required_vars: list[str]) -> bool:
     """
     Validate that required environment variables are set.
 
@@ -292,9 +269,6 @@ def validate_env_config(required_vars: list[str], logger: Optional[logging.Logge
         bool: True if all required environment variables are present, False otherwise.
     """
     load_dotenv()
-
-    if logger is None:
-        logger = setup_logging(__name__)
 
     missing_vars = []
 

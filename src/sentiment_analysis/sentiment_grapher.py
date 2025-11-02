@@ -121,7 +121,7 @@ def determine_input_file(base_input_file, input_dir):
     else:
         # Auto-detect latest sentiment file
         logger.info("🔍 Auto-detecting latest sentiment file...")
-        latest_file = find_latest_file(input_dir, "sentiments", "json", logger)
+        latest_file = find_latest_file(input_dir, "sentiments", "json")
         if not latest_file:
             logger.error(
                 "❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/"
@@ -139,7 +139,7 @@ def determine_input_file(base_input_file, input_dir):
 def load_sentiment_data(json_file: str) -> list[dict[str, Any]]:
     """Load and parse sentiment analysis data from JSON file."""
     try:
-        data = load_json_data(json_file, logger)
+        data = load_json_data(json_file)
 
         if not data:
             raise ValueError("JSON file is empty")
@@ -566,7 +566,7 @@ def generate_sentiment_charts(
             dpi,
         )
 
-        logger.info(f"✅ Chart generation complete! Generated {len(images)} chart(s)")
+        logger.info(f"Chart generation complete! Generated {len(images)} chart(s)")
 
         return images
 
@@ -576,9 +576,7 @@ def generate_sentiment_charts(
 
 
 def save_results_to_files(args, images, input_file):
-    timestamped_filename = make_timestamped_filename(
-        input_file, "sentiments", "chart", "png", logger
-    )
+    timestamped_filename = make_timestamped_filename(input_file, "sentiments", "chart", "png")
 
     # Save images to files
     ensure_directory(args.output_dir)
@@ -589,7 +587,7 @@ def save_results_to_files(args, images, input_file):
         image_data = base64.b64decode(images[0])
         with open(output_path, "wb") as f:
             f.write(image_data)
-        logger.info(f"✅ Chart saved to: {output_path}")
+        logger.info(f"Chart saved to: {output_path}")
     else:
         # Multiple charts case
         stem = Path(timestamped_filename).stem
@@ -604,7 +602,7 @@ def save_results_to_files(args, images, input_file):
             with open(output_path, "wb") as f:
                 f.write(image_data)
 
-        logger.info(f"✅ {len(images)} charts saved to {args.output_dir}")
+        logger.info(f"{len(images)} charts saved to {args.output_dir}")
 
 
 def main() -> None:

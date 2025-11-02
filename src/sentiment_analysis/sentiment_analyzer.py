@@ -98,7 +98,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         List of article dictionaries.
     """
     try:
-        articles = load_json_data(file_path, logger)
+        articles = load_json_data(file_path)
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -278,7 +278,7 @@ def save_results_to_json(
         output_file: Path to output file.
         articles_with_sentiment: List of articles with sentiment analysis.
     """
-    save_json_data(articles_with_sentiment, output_file, logger)
+    save_json_data(articles_with_sentiment, output_file)
     logger.info(f"Analysis complete! Results saved to {output_file}")
 
 
@@ -287,7 +287,7 @@ def main() -> None:
     news_dir, sentiments_dir = get_file_dirs()
 
     # Find latest news file
-    input_file = find_latest_file(news_dir, "news", "json", logger)
+    input_file = find_latest_file(news_dir, "news", "json")
 
     if input_file is None:
         logger.error("No news files found to analyze")
@@ -307,7 +307,6 @@ def main() -> None:
         input_name="news",
         output_name="sentiments",
         output_filetype="json",
-        logger=logger,
     )
     output_file = os.path.join(sentiments_dir, output_filename)
     save_results_to_json(output_file, articles_with_sentiment)

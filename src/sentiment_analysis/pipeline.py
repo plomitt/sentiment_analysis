@@ -1,12 +1,15 @@
 import psycopg
 from typing import Dict, List, Any, Set
 
+from sentence_transformers import SentenceTransformer
+
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_analyzed_article_to_db
 from sentiment_analysis.news_rss_fetcher import fetch_news_rss
 from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
 from sentiment_analysis.utils import setup_logging
 
 logger = setup_logging(__name__)
+EMBEDDING_DIMENSIONS = 384
 
 def is_sentiment_analysis_successful(reasoning):
     return "Analysis failed due to error:" not in reasoning
@@ -59,7 +62,7 @@ def get_existing_article_urls() -> Set[str]:
         OperationalError: If database query fails.
     """
     try:
-        conn_string = get_postgres_connection_string(logger)
+        conn_string = get_postgres_connection_string()
 
         with psycopg.connect(conn_string) as conn:
             with conn.cursor() as cur:
@@ -124,6 +127,22 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
         logger.warning(f"Failed to filter duplicates, processing all articles: {e}")
         logger.info("Falling back to processing all articles without filtering")
         return fetched_articles
+    
+def make_embedding_text(article):
+    title = article.get("title", "")
+    body = article.get("body", "")
+    text = f"{title} {body}"
+    truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
+    return truncated_text
+
+def get_embedded_article(analyzed_article):
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    text = make_embedding_text(analyzed_article)
+    embedding = model.encode(text).tolist()
+
+    embedded_article = dict(analyzed_article)
+    embedded_article["embedding"] = embedding
+    return embedded_article
 
 
 def process_articles(fetched_articles: List[Dict[str, Any]]):
@@ -153,7 +172,7 @@ def process_articles(fetched_articles: List[Dict[str, Any]]):
         logger.info("AI client created successfully")
 
         # Get database connection
-        conn_string = get_postgres_connection_string(logger)
+        conn_string = get_postgres_connection_string()
 
         with psycopg.connect(conn_string) as conn:
             with conn.cursor() as cur:
@@ -167,8 +186,10 @@ def process_articles(fetched_articles: List[Dict[str, Any]]):
                         analyzed_article = get_analyzed_article(article, client)
                         logger.debug(f"Article {i} analyzed successfully")
 
+                        embedded_article = get_embedded_article(analyzed_article)
+
                         # Save to database
-                        success = save_analyzed_article_to_db(analyzed_article, cur, logger)
+                        success = save_analyzed_article_to_db(embedded_article, cur)
 
                         if success:
                             stats['processed'] += 1

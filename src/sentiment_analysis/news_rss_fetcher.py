@@ -12,7 +12,7 @@ import calendar
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, Dict, List
 
 import feedparser
 
@@ -66,7 +66,7 @@ def fetch_news_rss(
     searxng_url: str | None = None,
     no_content: bool = False,
     request_delay: float = 0.0,
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     """
     Fetch news from RSS feeds with explicit parameters and return articles list.
 
@@ -159,10 +159,10 @@ def save_articles_to_json(
     """
     # Save articles to JSON file using existing logic
     news_dir = "src/sentiment_analysis/news"
-    filename = make_timestamped_filename(output_name="news", logger=logger)
+    filename = make_timestamped_filename(output_name="news")
     filepath = os.path.join(news_dir, filename)
 
-    save_json_data(articles, filepath, logger)
+    save_json_data(articles, filepath)
 
     articles_with_content = sum(1 for article in articles if article.get("body"))
     content_msg = (
