@@ -38,7 +38,7 @@ def get_postgres_connection_string() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
-def save_analyzed_article_to_db(article: Dict[str, Any], cur: psycopg.Cursor) -> bool:
+def save_article_to_db(article: Dict[str, Any], cur: psycopg.Cursor) -> bool:
     """
     Save a single analyzed article to the PostgreSQL database with upsert logic.
 

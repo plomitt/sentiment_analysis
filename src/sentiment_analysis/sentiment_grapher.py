@@ -123,12 +123,8 @@ def determine_input_file(base_input_file, input_dir):
         logger.info("🔍 Auto-detecting latest sentiment file...")
         latest_file = find_latest_file(input_dir, "sentiments", "json")
         if not latest_file:
-            logger.error(
-                "❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/"
-            )
-            logger.error(
-                "Please run sentiment analyzer first to generate sentiment files."
-            )
+            logger.error("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
+            logger.error("Please run sentiment analyzer first to generate sentiment files.")
             return None
         input_file = latest_file
 
@@ -190,9 +186,7 @@ def convert_timestamps(df: pd.DataFrame) -> pd.DataFrame:
     dropped_count = initial_count - len(df)
 
     if dropped_count > 0:
-        logger.warning(
-            f"Warning: Dropped {dropped_count} records with invalid timestamps"
-        )
+        logger.warning(f"Warning: Dropped {dropped_count} records with invalid timestamps")
 
     # Sort by datetime
     df = df.sort_values("datetime").reset_index(drop=True)
@@ -220,12 +214,8 @@ def filter_data_by_time(df: pd.DataFrame, interval_minutes: str | int) -> pd.Dat
     # Filter data
     filtered_df = df[df["datetime"] >= cutoff_time].copy()
 
-    logger.info(
-        f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes"
-    )
-    logger.info(
-        f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}"
-    )
+    logger.info(f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes")
+    logger.info(f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}")
 
     return filtered_df
 

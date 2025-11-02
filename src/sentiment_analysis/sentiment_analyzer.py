@@ -30,16 +30,14 @@ logger = setup_logging(__name__)
 class SentimentAnalysis(BaseModel):
     """Structured output for sentiment analysis results."""
 
+    success: bool = Field(..., description="Whether the analysis was successful")
     score: float = Field(
         ...,
         ge=1.0,
         le=10.0,
         description="Sentiment score from 1 (strong sell) to 10 (strong buy)",
     )
-    reasoning: str = Field(
-        ...,
-        description="Concise reasoning for the score focusing on trading implications",
-    )
+    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
 
     @field_validator("score")
     @classmethod
@@ -160,9 +158,7 @@ def analyze_article(
     except Exception as e:
         logger.error(f"Error analyzing article '{title[:50]}...': {e!s}")
         # Return a neutral sentiment as fallback
-        return SentimentAnalysis(
-            score=5.0, reasoning=f"Analysis failed due to error: {e!s}"
-        )
+        return SentimentAnalysis(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
 def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -216,9 +212,6 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
             continue
 
     results_dict = [article.model_dump() for article in results]
-    logger.info(
-        f"Batch analysis complete. {len(results)} articles processed successfully"
-    )
     logger.info(f"Analysis complete! Analyzed {len(results)} articles")
     return results_dict
 
@@ -268,20 +261,6 @@ def print_analysis_summary(articles_with_sentiment: list[dict[str, Any]]) -> Non
     logger.info("=" * 50)
 
 
-def save_results_to_json(
-    output_file: str, articles_with_sentiment: list[dict[str, Any]]
-) -> None:
-    """
-    Save analysis results to JSON file.
-
-    Args:
-        output_file: Path to output file.
-        articles_with_sentiment: List of articles with sentiment analysis.
-    """
-    save_json_data(articles_with_sentiment, output_file)
-    logger.info(f"Analysis complete! Results saved to {output_file}")
-
-
 def main() -> None:
     """Main function to run the sentiment analysis process."""
     news_dir, sentiments_dir = get_file_dirs()
@@ -309,7 +288,8 @@ def main() -> None:
         output_filetype="json",
     )
     output_file = os.path.join(sentiments_dir, output_filename)
-    save_results_to_json(output_file, articles_with_sentiment)
+    save_json_data(articles_with_sentiment, output_file)
+    logger.info(f"Analysis results saved to {output_file}")
 
     print_analysis_summary(articles_with_sentiment)
 
@@ -322,7 +302,6 @@ __all__ = [
     "analyze_articles_batch",
     "main",
     "print_analysis_summary",
-    "save_results_to_json",
 ]
 
 

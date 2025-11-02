@@ -1,54 +1,16 @@
+import time
 import psycopg
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, Optional, Set
 
 from sentence_transformers import SentenceTransformer
 
-from sentiment_analysis.db_utils import get_postgres_connection_string, save_analyzed_article_to_db
+from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
 from sentiment_analysis.news_rss_fetcher import fetch_news_rss
 from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
 from sentiment_analysis.utils import setup_logging
 
 logger = setup_logging(__name__)
 EMBEDDING_DIMENSIONS = 384
-
-def is_sentiment_analysis_successful(reasoning):
-    return "Analysis failed due to error:" not in reasoning
-
-def get_analysis_results(title, body, client):
-    sentiment_result = analyze_article(title, body, client)
-    sentiment_data = sentiment_result.model_dump()
-
-    score = sentiment_data.get("score", "")
-    reasoning = sentiment_data.get("reasoning", "")
-
-    return score, reasoning
-
-def get_analyzed_article(article, client):
-    # Extract article data
-    title = article.get("title", "")
-    body = article.get("body", "")
-    source = article.get("source", "")
-    url = article.get("url", "")
-    timestamp = article.get("timestamp", "")
-    unix_timestamp = article.get("unix_timestamp", "")
-
-    # Analyze sentiment
-    score, reasoning = get_analysis_results(title, body, client)
-    sentiment_analysis_success = is_sentiment_analysis_successful(reasoning)
-
-    analyzed_article = {
-        "title": title,
-        "body": body,
-        "source": source,
-        "url": url,
-        "timestamp": timestamp,
-        "unix_timestamp": unix_timestamp,
-        "sentiment_analysis_success": sentiment_analysis_success,
-        "sentiment_score": score,
-        "sentiment_reasoning": reasoning
-    }
-
-    return analyzed_article
 
 
 def get_existing_article_urls() -> Set[str]:
@@ -75,7 +37,6 @@ def get_existing_article_urls() -> Set[str]:
     except Exception as e:
         logger.error(f"Failed to fetch existing article URLs: {e}")
         raise
-
 
 def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
@@ -127,7 +88,8 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
         logger.warning(f"Failed to filter duplicates, processing all articles: {e}")
         logger.info("Falling back to processing all articles without filtering")
         return fetched_articles
-    
+
+
 def make_embedding_text(article):
     title = article.get("title", "")
     body = article.get("body", "")
@@ -135,17 +97,130 @@ def make_embedding_text(article):
     truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
     return truncated_text
 
-def get_embedded_article(analyzed_article):
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    text = make_embedding_text(analyzed_article)
-    embedding = model.encode(text).tolist()
+def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: Optional[int] = 32) -> List[Dict[str, Any]]:
+    """
+    Generate embeddings for a batch of analyzed articles using batch processing.
 
-    embedded_article = dict(analyzed_article)
-    embedded_article["embedding"] = embedding
-    return embedded_article
+    Args:
+        analyzed_articles: List of analyzed article dictionaries
+        batch_size: Number of articles to process in each batch (default: 32)
+
+    Returns:
+        List of analyzed articles with embedding vectors added
+
+    Raises:
+        ValueError: If no articles provided
+        Exception: If embedding generation fails
+    """
+    if not analyzed_articles:
+        logger.warning("No articles provided for embedding generation")
+        return []
+
+    start_time = time.time()
+    logger.info(f"Generating embeddings for {len(analyzed_articles)} articles with batch size {batch_size}")
+
+    try:
+        # Initialize model once for the entire batch
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        logger.debug("SentenceTransformer model initialized successfully")
+
+        embedded_articles = []
+
+        # Process articles in batches to manage memory efficiently
+        for i in range(0, len(analyzed_articles), batch_size):
+            batch = analyzed_articles[i:i + batch_size]
+            batch_start_time = time.time()
+
+            # Prepare batch texts for embedding
+            batch_texts = [make_embedding_text(article) for article in batch]
+
+            # Generate embeddings for the entire batch at once
+            batch_embeddings = model.encode(batch_texts, batch_size=len(batch))
+
+            # Create embedded articles by adding embeddings to original articles
+            for article, embedding in zip(batch, batch_embeddings):
+                embedded_article = dict(article)  # Create a copy to avoid modifying original
+                embedded_article["embedding"] = embedding.tolist()
+                embedded_articles.append(embedded_article)
+
+            batch_duration = time.time() - batch_start_time
+            logger.debug(f"Processed batch {i//batch_size + 1}: {len(batch)} articles in {batch_duration:.2f}s")
+
+        total_duration = time.time() - start_time
+        avg_time_per_article = total_duration / len(analyzed_articles)
+
+        logger.info(f"Successfully generated embeddings for {len(embedded_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
+
+        return embedded_articles
+
+    except Exception as e:
+        logger.error(f"Failed to generate embeddings for articles: {e}")
+        raise
 
 
-def process_articles(fetched_articles: List[Dict[str, Any]]):
+def get_analysis_results(title, body, client):
+    sentiment_result = analyze_article(title, body, client)
+    sentiment_data = sentiment_result.model_dump()
+
+    sentiment_analysis_success = sentiment_data.get("success", False)
+    score = sentiment_data.get("score", "")
+    reasoning = sentiment_data.get("reasoning", "")
+
+    return score, reasoning, sentiment_analysis_success
+
+def get_analyzed_article(article, client):
+    # Extract article data
+    title = article.get("title", "")
+    body = article.get("body", "")
+
+    # Analyze sentiment
+    score, reasoning, sentiment_analysis_success = get_analysis_results(title, body, client)
+
+    analyzed_article = dict(article)
+    analyzed_article["sentiment_analysis_success"] = sentiment_analysis_success
+    analyzed_article["sentiment_score"] = score
+    analyzed_article["sentiment_reasoning"] = reasoning
+
+    return analyzed_article
+
+def get_analyzed_articles(articles):
+    if not articles:
+        logger.warning("No articles provided for sentiment analysis")
+        return []
+
+    logger.info(f"Analyzing {len(articles)} articles")
+
+    try:
+        start_time = time.time()
+
+        # Initialize client once for the entire batch
+        client = create_client()
+        logger.debug("AI client created successfully")
+
+        analyzed_articles = []
+
+        # Analyze articles
+        for i, article in enumerate(articles, 1):
+            article_start_time = time.time()
+
+            analyzed_article = get_analyzed_article(article, client)
+            analyzed_articles.append(analyzed_article)
+
+            article_duration = time.time() - article_start_time
+            logger.debug(f"Processed article {i}/{len(articles)} in {article_duration:.2f}s")
+
+        total_duration = time.time() - start_time
+        avg_time_per_article = total_duration / len(analyzed_articles)
+        logger.info(f"Successfully analyzed {len(analyzed_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
+
+        return analyzed_articles
+
+    except Exception as e:
+        logger.error(f"Failed to analyze articles: {e}")
+        raise
+
+
+def save_articles_to_db(articles: List[Dict[str, Any]]):
     """
     Process a batch of articles through sentiment analysis and save to database.
 
@@ -154,69 +229,56 @@ def process_articles(fetched_articles: List[Dict[str, Any]]):
     handling and statistics tracking.
 
     Args:
-        fetched_articles: List of article dictionaries to process. Each article
-            should contain keys: title, body, source, url, timestamp, unix_timestamp.
+        articles: List of article dictionaries to process. Each article
+        should contain keys: title, body, source, url, timestamp, unix_timestamp.
     """
-    if not fetched_articles:
-        logger.info("No articles to process")
+    if not articles:
+        logger.info("No articles to save")
         return
 
-    logger.info(f"Starting processing of {len(fetched_articles)} articles")
-
-    # Initialize statistics
-    stats = {'processed': 0, 'failed': 0, 'total': len(fetched_articles)}
+    total_articles = len(articles)
+    processed_articles = 0
+    logger.info(f"Saving {total_articles} articles to db")
 
     try:
-        # Create AI client
-        client = create_client()
-        logger.info("AI client created successfully")
-
-        # Get database connection
+        # Open database connection
         conn_string = get_postgres_connection_string()
 
         with psycopg.connect(conn_string) as conn:
             with conn.cursor() as cur:
                 logger.info("Database connection established")
 
-                for i, article in enumerate(fetched_articles, 1):
+                # Save to database
+                for i, article in enumerate(articles, 1):
                     try:
-                        logger.debug(f"Processing article {i}/{len(fetched_articles)}")
-
-                        # Analyze article
-                        analyzed_article = get_analyzed_article(article, client)
-                        logger.debug(f"Article {i} analyzed successfully")
-
-                        embedded_article = get_embedded_article(analyzed_article)
-
-                        # Save to database
-                        success = save_analyzed_article_to_db(embedded_article, cur)
+                        logger.debug(f"Saving article {i}/{total_articles}")
+                        success = save_article_to_db(article, cur)
 
                         if success:
-                            stats['processed'] += 1
+                            processed_articles += 1
                             logger.debug(f"Successfully processed and saved article {i}")
                         else:
-                            stats['failed'] += 1
                             logger.error(f"Failed to save article {i} to database")
 
                     except Exception as e:
-                        stats['failed'] += 1
                         logger.error(f"Error processing article {i}: {e}")
                         logger.debug(f"Article that failed: {article}")
                         continue
 
                 # Commit transaction if we processed at least one article
-                if stats['processed'] > 0:
+                if processed_articles > 0:
                     conn.commit()
-                    logger.info(f"Committed {stats['processed']} articles to database")
+                    logger.info(f"Committed {processed_articles} articles to database")
                 else:
                     conn.rollback()
                     logger.warning("No articles processed successfully, rolling back transaction")
 
     except Exception as e:
-        logger.error(f"Fatal error in process_articles: {e}")
+        logger.error(f"Fatal error in save_articles_to_db: {e}")
         raise
 
-    logger.info(f"Processing complete: {stats['processed']}/{stats['total']} successful, {stats['failed']} failed")
+    logger.info(f"Saving complete: {processed_articles}/{total_articles} successful, {total_articles - processed_articles} failed")
+    return processed_articles
 
 
 def run_pipeline():
@@ -229,21 +291,35 @@ def run_pipeline():
     try:
         # Fetch Bitcoin news articles
         fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=True)
-        logger.info(f"Fetched {len(fetched_articles)} articles from RSS feed")
-
         if not fetched_articles:
             logger.warning("No articles fetched from RSS feed")
             return
 
-        # Filter out duplicates before processing
+        # Filter out duplicates
         filtered_articles = filter_duplicate_articles(fetched_articles)
         if not filtered_articles:
             logger.info("All articles are duplicates, no new articles to process")
             return
+        
+        # Make vector embeddings
+        embedded_articles = get_embedded_articles(filtered_articles)
+        if not embedded_articles:
+            logger.error("Failed to generate embeddings for articles")
+            return
+        
+        # Analyze sentiment
+        analyzed_articles = get_analyzed_articles(embedded_articles)
+        if not analyzed_articles:
+            logger.error("Failed to analyze articles")
+            return
 
-        # Analyze sentiment and save to db
-        logger.info(f"Processing {len(filtered_articles)} unique articles")
-        process_articles(filtered_articles)
+        # Save to db
+        num_saved_articles = save_articles_to_db(analyzed_articles)
+        if not num_saved_articles:
+            logger.error("No articles saved to db")
+            return
+
+        logger.info(f"Pipeline completed successfully: fetched {len(fetched_articles)}, filtered {len(filtered_articles)}, embedded {len(embedded_articles)}, analyzed {len(analyzed_articles)}, saved {num_saved_articles} articles.")
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
