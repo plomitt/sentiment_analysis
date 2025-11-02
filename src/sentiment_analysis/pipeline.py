@@ -1,7 +1,7 @@
 import time
 import psycopg
 from typing import Dict, List, Any, Optional, Set
-
+from instructor import Instructor
 from sentence_transformers import SentenceTransformer
 
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
@@ -90,7 +90,7 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
         return fetched_articles
 
 
-def make_embedding_text(article):
+def make_embedding_text(article: Dict[str, Any]) -> str:
     title = article.get("title", "")
     body = article.get("body", "")
     text = f"{title} {body}"
@@ -158,7 +158,7 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         raise
 
 
-def get_analysis_results(title, body, client):
+def get_analysis_results(title: str, body: str, client: Instructor) -> tuple[str, str, bool]:
     sentiment_result = analyze_article(title, body, client)
     sentiment_data = sentiment_result.model_dump()
 
@@ -168,7 +168,7 @@ def get_analysis_results(title, body, client):
 
     return score, reasoning, sentiment_analysis_success
 
-def get_analyzed_article(article, client):
+def get_analyzed_article(article: Dict[str, Any], client: Instructor) -> Dict[str, Any]:
     # Extract article data
     title = article.get("title", "")
     body = article.get("body", "")
@@ -183,7 +183,7 @@ def get_analyzed_article(article, client):
 
     return analyzed_article
 
-def get_analyzed_articles(articles):
+def get_analyzed_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not articles:
         logger.warning("No articles provided for sentiment analysis")
         return []
@@ -220,7 +220,7 @@ def get_analyzed_articles(articles):
         raise
 
 
-def save_articles_to_db(articles: List[Dict[str, Any]]):
+def save_articles_to_db(articles: List[Dict[str, Any]]) -> int:
     """
     Process a batch of articles through sentiment analysis and save to database.
 
@@ -234,7 +234,7 @@ def save_articles_to_db(articles: List[Dict[str, Any]]):
     """
     if not articles:
         logger.info("No articles to save")
-        return
+        return []
 
     total_articles = len(articles)
     processed_articles = 0
@@ -281,7 +281,7 @@ def save_articles_to_db(articles: List[Dict[str, Any]]):
     return processed_articles
 
 
-def run_pipeline():
+def run_pipeline() -> None:
     """
     Run the complete sentiment analysis pipeline.
 
@@ -289,10 +289,10 @@ def run_pipeline():
     to the PostgreSQL database.
     """
     try:
-        logger.info("Starting sentiment analysis pipeline")
+        logger.info("Starting pipeline")
         pipeline_start_time = time.perf_counter()
 
-        # Fetch Bitcoin news articles
+        # Fetch news articles
         fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=True)
         if not fetched_articles:
             logger.warning("No articles fetched from RSS feed")
@@ -327,7 +327,6 @@ def run_pipeline():
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
-        print(f"Pipeline failed: {e}")
         raise
 
 

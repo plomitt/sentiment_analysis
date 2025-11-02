@@ -597,6 +597,9 @@ def save_results_to_files(args, images, input_file):
 
 def main() -> None:
     """Main function with CLI interface."""
+
+    # TODO: filter out articles with failed analysis
+
     args = parse_args()
     interval_minutes = parse_interval_minutes(args.interval_minutes)
 
