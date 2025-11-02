@@ -65,7 +65,6 @@ async def fetch_search_results(
     async with session.get(url, params=query_params, headers=headers) as response:
 
         if response.status != 200:
-            response_text = await response.text()
             raise Exception(
                 f"Failed to fetch search results for query '{query}': {response.status} {response.reason}"
             )
@@ -180,7 +179,7 @@ async def searxng_search_async(
 
 def searxng_search(
     queries: list[str],
-    base_url: str,
+    base_url: str | None = None,
     category: str | None = None,
     max_results: int = 10,
 ) -> dict[str, Any]:
@@ -222,8 +221,8 @@ __all__ = [
 
 if __name__ == "__main__":
     # Example usage
-    results = searxng_search(
-        queries=["weather in paris", "what is paris known for"], max_results=2
-    )
+    start_time = asyncio.get_event_loop().time()
+    results = searxng_search(queries=["weather in paris", "what is paris known for"], max_results=2)
+    elapsed_time = asyncio.get_event_loop().time() - start_time
 
-    logger.debug(f"Search results: {json.dumps(results, indent=2)}")
+    logger.info(f"Search results ({elapsed_time:.2f}s): {json.dumps(results, indent=2)}")
