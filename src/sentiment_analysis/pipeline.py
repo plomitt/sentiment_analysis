@@ -116,7 +116,7 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         logger.warning("No articles provided for embedding generation")
         return []
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     logger.info(f"Generating embeddings for {len(analyzed_articles)} articles with batch size {batch_size}")
 
     try:
@@ -129,7 +129,7 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         # Process articles in batches to manage memory efficiently
         for i in range(0, len(analyzed_articles), batch_size):
             batch = analyzed_articles[i:i + batch_size]
-            batch_start_time = time.time()
+            batch_start_time = time.perf_counter()
 
             # Prepare batch texts for embedding
             batch_texts = [make_embedding_text(article) for article in batch]
@@ -143,10 +143,10 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
                 embedded_article["embedding"] = embedding.tolist()
                 embedded_articles.append(embedded_article)
 
-            batch_duration = time.time() - batch_start_time
+            batch_duration = time.perf_counter() - batch_start_time
             logger.debug(f"Processed batch {i//batch_size + 1}: {len(batch)} articles in {batch_duration:.2f}s")
 
-        total_duration = time.time() - start_time
+        total_duration = time.perf_counter() - start_time
         avg_time_per_article = total_duration / len(analyzed_articles)
 
         logger.info(f"Successfully generated embeddings for {len(embedded_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
@@ -191,7 +191,7 @@ def get_analyzed_articles(articles):
     logger.info(f"Analyzing {len(articles)} articles")
 
     try:
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         # Initialize client once for the entire batch
         client = create_client()
@@ -201,15 +201,15 @@ def get_analyzed_articles(articles):
 
         # Analyze articles
         for i, article in enumerate(articles, 1):
-            article_start_time = time.time()
+            article_start_time = time.perf_counter()
 
             analyzed_article = get_analyzed_article(article, client)
             analyzed_articles.append(analyzed_article)
 
-            article_duration = time.time() - article_start_time
+            article_duration = time.perf_counter() - article_start_time
             logger.debug(f"Processed article {i}/{len(articles)} in {article_duration:.2f}s")
 
-        total_duration = time.time() - start_time
+        total_duration = time.perf_counter() - start_time
         avg_time_per_article = total_duration / len(analyzed_articles)
         logger.info(f"Successfully analyzed {len(analyzed_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
 
@@ -289,6 +289,9 @@ def run_pipeline():
     to the PostgreSQL database.
     """
     try:
+        logger.info("Starting sentiment analysis pipeline")
+        pipeline_start_time = time.perf_counter()
+
         # Fetch Bitcoin news articles
         fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=True)
         if not fetched_articles:
@@ -319,7 +322,8 @@ def run_pipeline():
             logger.error("No articles saved to db")
             return
 
-        logger.info(f"Pipeline completed successfully: fetched {len(fetched_articles)}, filtered {len(filtered_articles)}, embedded {len(embedded_articles)}, analyzed {len(analyzed_articles)}, saved {num_saved_articles} articles.")
+        pipeline_duration = time.perf_counter() - pipeline_start_time
+        logger.info(f"Pipeline completed successfully in {pipeline_duration:.2f}s: fetched {len(fetched_articles)}, filtered {len(filtered_articles)}, embedded {len(embedded_articles)}, analyzed {len(analyzed_articles)}, saved {num_saved_articles} articles.")
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
