@@ -1,5 +1,6 @@
 import time
 import psycopg
+from pgvector.psycopg import register_vector
 from typing import Dict, List, Any, Optional, Set
 from instructor import Instructor
 from sentence_transformers import SentenceTransformer
@@ -10,8 +11,6 @@ from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
 from sentiment_analysis.utils import setup_logging
 
 logger = setup_logging(__name__)
-EMBEDDING_DIMENSIONS = 384
-
 
 def get_existing_article_urls() -> Set[str]:
     """
@@ -38,7 +37,7 @@ def get_existing_article_urls() -> Set[str]:
         logger.error(f"Failed to fetch existing article URLs: {e}")
         raise
 
-def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_duplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Filter out articles that already exist in the database.
 
@@ -48,14 +47,14 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
     processed and stored in the database.
 
     Args:
-        fetched_articles: List of article dictionaries to filter. Each article
+        articles: List of article dictionaries to filter. Each article
             should contain a 'url' key for duplicate detection.
 
     Returns:
         List[Dict[str, Any]]: Filtered list containing only new articles
             that don't exist in the database, preserving original order.
     """
-    if not fetched_articles:
+    if not articles:
         logger.debug("No articles to filter")
         return []
 
@@ -67,7 +66,7 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
         filtered_articles = []
         duplicates_count = 0
 
-        for article in fetched_articles:
+        for article in articles:
             article_url = article.get("url")
             if article_url and article_url not in existing_urls:
                 filtered_articles.append(article)
@@ -87,7 +86,7 @@ def filter_duplicate_articles(fetched_articles: List[Dict[str, Any]]) -> List[Di
     except Exception as e:
         logger.warning(f"Failed to filter duplicates, processing all articles: {e}")
         logger.info("Falling back to processing all articles without filtering")
-        return fetched_articles
+        return articles
 
 
 def make_embedding_text(article: Dict[str, Any]) -> str:
@@ -97,12 +96,12 @@ def make_embedding_text(article: Dict[str, Any]) -> str:
     truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
     return truncated_text
 
-def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: Optional[int] = 32) -> List[Dict[str, Any]]:
+def get_embedded_articles(articles: List[Dict[str, Any]], batch_size: Optional[int] = 32) -> List[Dict[str, Any]]:
     """
     Generate embeddings for a batch of analyzed articles using batch processing.
 
     Args:
-        analyzed_articles: List of analyzed article dictionaries
+        articles: List of analyzed article dictionaries
         batch_size: Number of articles to process in each batch (default: 32)
 
     Returns:
@@ -112,12 +111,12 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         ValueError: If no articles provided
         Exception: If embedding generation fails
     """
-    if not analyzed_articles:
+    if not articles:
         logger.warning("No articles provided for embedding generation")
         return []
 
     start_time = time.perf_counter()
-    logger.info(f"Generating embeddings for {len(analyzed_articles)} articles with batch size {batch_size}")
+    logger.info(f"Generating embeddings for {len(articles)} articles with batch size {batch_size}")
 
     try:
         # Initialize model once for the entire batch
@@ -127,8 +126,8 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         embedded_articles = []
 
         # Process articles in batches to manage memory efficiently
-        for i in range(0, len(analyzed_articles), batch_size):
-            batch = analyzed_articles[i:i + batch_size]
+        for i in range(0, len(articles), batch_size):
+            batch = articles[i:i + batch_size]
             batch_start_time = time.perf_counter()
 
             # Prepare batch texts for embedding
@@ -147,7 +146,7 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
             logger.debug(f"Processed batch {i//batch_size + 1}: {len(batch)} articles in {batch_duration:.2f}s")
 
         total_duration = time.perf_counter() - start_time
-        avg_time_per_article = total_duration / len(analyzed_articles)
+        avg_time_per_article = total_duration / len(articles)
 
         logger.info(f"Successfully generated embeddings for {len(embedded_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
 
@@ -158,8 +157,63 @@ def get_embedded_articles(analyzed_articles: List[Dict[str, Any]], batch_size: O
         raise
 
 
-def get_analysis_results(title: str, body: str, client: Instructor) -> tuple[str, str, bool]:
-    sentiment_result = analyze_article(title, body, client)
+def fetch_similar_articles(conn: psycopg.Connection, embedding: List, limit: int = 5) -> List[Dict[str, Any]]:
+    with conn.cursor() as cur:
+        # Using cosine distance
+        cur.execute(
+            """
+            SELECT title, body, sentiment_score
+            FROM articles
+            ORDER BY embedding <=> %s::vector(384)
+            LIMIT %s
+            """,
+            (embedding, limit)
+        )
+        rows = cur.fetchall()
+        similar_articles = [{"title": r[0], "body": r[1], "sentiment_score": r[2]} for r in rows]
+    
+    return similar_articles
+
+def get_enriched_articles(articles: List[Dict[str, Any]], limit: int = 5) -> List[Dict[str, Any]]:
+    if not articles:
+        logger.warning("No articles provided for enrichment")
+        return []
+
+    logger.info(f"Enriching {len(articles)} articles")
+
+    try:
+        start_time = time.perf_counter()
+
+        conn_string = get_postgres_connection_string()
+        with psycopg.connect(conn_string, autocommit=True) as conn:
+            register_vector(conn)
+            logger.debug("Vector extension registered successfully")
+            enriched_articles = []
+
+            for i, article in enumerate(articles, 1):
+                article_start_time = time.perf_counter()
+
+                nearest_similar_articles = fetch_similar_articles(conn, article["embedding"], limit)
+                enriched_article = dict(article)
+                enriched_article["nearest_similar_articles"] = nearest_similar_articles
+                enriched_articles.append(enriched_article)
+
+                article_duration = time.perf_counter() - article_start_time
+                logger.debug(f"Enriched article {i}/{len(articles)} in {article_duration:.2f}s")
+            
+            total_duration = time.perf_counter() - start_time
+            avg_time_per_article = total_duration / len(enriched_articles)
+            logger.info(f"Successfully enriched {len(enriched_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
+            return enriched_articles
+
+    except Exception as e:
+        logger.warning(f"Failed to enrich articles: {e}")
+        logger.info("Falling back to processing all articles without enrichment")
+        return articles
+
+
+def get_analysis_results(title: str, body: str, nearest_similar_articles: list[dict[str, Any]], client: Instructor) -> tuple[str, str, bool]:
+    sentiment_result = analyze_article(title, body, client, nearest_similar_articles)
     sentiment_data = sentiment_result.model_dump()
 
     sentiment_analysis_success = sentiment_data.get("success", False)
@@ -172,9 +226,10 @@ def get_analyzed_article(article: Dict[str, Any], client: Instructor) -> Dict[st
     # Extract article data
     title = article.get("title", "")
     body = article.get("body", "")
+    nearest_similar_articles = article.get("nearest_similar_articles", [])
 
     # Analyze sentiment
-    score, reasoning, sentiment_analysis_success = get_analysis_results(title, body, client)
+    score, reasoning, sentiment_analysis_success = get_analysis_results(title, body, nearest_similar_articles, client)
 
     analyzed_article = dict(article)
     analyzed_article["sentiment_analysis_success"] = sentiment_analysis_success
@@ -207,7 +262,7 @@ def get_analyzed_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]
             analyzed_articles.append(analyzed_article)
 
             article_duration = time.perf_counter() - article_start_time
-            logger.debug(f"Processed article {i}/{len(articles)} in {article_duration:.2f}s")
+            logger.debug(f"Analyzed article {i}/{len(articles)} in {article_duration:.2f}s")
 
         total_duration = time.perf_counter() - start_time
         avg_time_per_article = total_duration / len(analyzed_articles)
@@ -310,8 +365,13 @@ def run_pipeline() -> None:
             logger.error("Failed to generate embeddings for articles")
             return
         
+        # Enrich with nearest similar articles from db
+        enriched_articles = get_enriched_articles(embedded_articles)
+        if not enriched_articles:
+            logger.warning("Failed to enrich articles with similar articles")
+        
         # Analyze sentiment
-        analyzed_articles = get_analyzed_articles(embedded_articles)
+        analyzed_articles = get_analyzed_articles(enriched_articles)
         if not analyzed_articles:
             logger.error("Failed to analyze articles")
             return

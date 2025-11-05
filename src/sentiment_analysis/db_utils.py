@@ -12,6 +12,9 @@ from sentiment_analysis.utils import validate_env_config, setup_logging
 
 logger = setup_logging(__name__)
 
+EMBEDDING_DIMENSIONS = 384
+COSINE_M = 16
+COSINE_EF_CONSTRUCTION = 64
 
 def get_postgres_connection_string() -> str:
     """
@@ -144,6 +147,28 @@ def save_article_to_db(article: Dict[str, Any], cur: psycopg.Cursor) -> bool:
         logger.debug(f"Article data: {article_data}")
         raise
 
+def rebuild_vector_index(m: int = COSINE_M, ef_construction: int = COSINE_EF_CONSTRUCTION):
+    """
+    Rebuild the vector index in the PostgreSQL database if needed.
+    """
+
+    rebuild_sql = f"""
+    DROP INDEX IF EXISTS articles_embedding_idx;
+
+    CREATE INDEX ON public.articles USING hnsw (embedding vector_cosine_ops) WITH (m = {m}, ef_construction = {ef_construction});
+    """
+    try:
+        conn_string = get_postgres_connection_string()
+        with psycopg.connect(conn_string, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(rebuild_sql)
+
+        logger.info("Vector index rebuilt successfully")
+    except Exception as e:
+        logger.error(f"Failed to rebuild vector index: {e}")
+        raise
+
+
 def setup_database(clean_install: bool = False) -> bool:
     """
     Set up PostgreSQL database with required extensions and tables for sentiment analysis.
@@ -188,7 +213,7 @@ def setup_database(clean_install: bool = False) -> bool:
         """
         logger.info("Clean install enabled: dropping existing articles table")
     
-    setup_sql += """
+    setup_sql += f"""
     -- 3. Create the articles table
     CREATE TABLE public.articles (
         id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -203,11 +228,14 @@ def setup_database(clean_install: bool = False) -> bool:
         sentiment_reasoning text NOT NULL,
         created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        embedding vector(384)
+        embedding vector({EMBEDDING_DIMENSIONS})
     );
     
     -- 4. Create unique index on url
     CREATE UNIQUE INDEX articles_url ON public.articles USING btree (url);
+
+    -- 5. Create vector indexing
+    CREATE INDEX ON public.articles USING hnsw (embedding vector_cosine_ops) WITH (m = {COSINE_M}, ef_construction = {COSINE_EF_CONSTRUCTION});
     """
     
     # Execute setup script
@@ -260,9 +288,23 @@ def setup_database(clean_install: bool = False) -> bool:
         logger.debug(f"Error type: {type(e).__name__}")
         raise
 
-if __name__ == "__main__":
-    user_input = input("This will set up a clean database instance (dropping existing tables if they exist). Type 'confirm' to proceed: ")
-    if user_input.lower() == 'confirm':
-        setup_database(clean_install=True)
+
+def run_setup() -> None:
+    user_input = input("Select one of the following by typing the name - (rebuild_index, setup_database): ")
+    if user_input.lower() == 'rebuild_index':
+        user_input = input("Enter the m parameter for the vector index (leave blank for default - 16): ")
+        m = int(user_input) if user_input else COSINE_M
+        user_input = input("Enter the ef_construction parameter for the vector index (leave blank for default - 64): ")
+        ef_construction = int(user_input) if user_input else COSINE_EF_CONSTRUCTION
+        rebuild_vector_index(m, ef_construction)
+    elif user_input.lower() == 'setup_database':
+        user_input = input("This will set up a clean database instance (dropping existing tables). Type 'confirm' to proceed: ")
+        if user_input.lower() == 'confirm':
+            setup_database(clean_install=True)
+        else:
+            print("Database setup cancelled.")
     else:
-        print("Database setup cancelled.")
+        print("Invalid option. Please try again.")
+
+if __name__ == "__main__":
+    run_setup()

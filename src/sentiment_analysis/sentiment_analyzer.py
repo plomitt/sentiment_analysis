@@ -14,7 +14,7 @@ from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
 
 from sentiment_analysis.client_manager import build_client
-from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context
+from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
 from sentiment_analysis.utils import (
     find_latest_file,
     load_json_data,
@@ -119,7 +119,7 @@ def create_client() -> Instructor:
 
 
 def analyze_article(
-    title: str, body: str | None, client: Instructor
+    title: str, body: str | None, client: Instructor, nearest_similar_articles: list[dict[str, Any]] | None = None
 ) -> SentimentAnalysis:
     """
     Analyze a single article for sentiment.
@@ -128,6 +128,7 @@ def analyze_article(
         title: Article title.
         body: Article body content (optional - can be None or empty).
         client: Instructor client instance.
+        nearest_similar_articles: List of nearest similar articles (optional).
 
     Returns:
         SentimentAnalysis object with score and reasoning.
@@ -136,16 +137,14 @@ def analyze_article(
     body_content = body if body else ""
 
     try:
-        # Get the formatted prompt
-        prompt = get_sentiment_analysis_prompt_with_context(title, body_content)
+        # Get the formatted prompts
+        system_prompt = get_system_prompt()
+        prompt = get_sentiment_analysis_prompt_with_context(title, body_content, nearest_similar_articles)
 
         # Use Instructor to get structured output
         sentiment = client.chat.completions.create(
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert Bitcoin trading analyst.",
-                },
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             response_model=SentimentAnalysis,
