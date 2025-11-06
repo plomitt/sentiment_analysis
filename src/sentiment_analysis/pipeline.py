@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional, Set
 from instructor import Instructor
 from sentence_transformers import SentenceTransformer
 
+from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
 from sentiment_analysis.news_rss_fetcher import fetch_news_rss
 from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
@@ -336,7 +337,7 @@ def save_articles_to_db(articles: List[Dict[str, Any]]) -> int:
     return processed_articles
 
 
-def run_pipeline() -> None:
+def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True) -> None:
     """
     Run the complete sentiment analysis pipeline.
 
@@ -348,7 +349,7 @@ def run_pipeline() -> None:
         pipeline_start_time = time.perf_counter()
 
         # Fetch news articles
-        fetched_articles = fetch_news_rss(query="bitcoin", count=10, no_content=True)
+        fetched_articles = fetch_news_rss(query=query, count=article_count, no_content=no_content)
         if not fetched_articles:
             logger.warning("No articles fetched from RSS feed")
             return
@@ -391,4 +392,5 @@ def run_pipeline() -> None:
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    config = get_config()
+    run_pipeline(config["query"], config["article_count"], config["no_content"])
