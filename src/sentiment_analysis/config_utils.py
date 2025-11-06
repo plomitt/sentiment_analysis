@@ -15,6 +15,7 @@ DEFAULTS = {
     "article_count": 10,
     "no_content": False,
     "minutes": 5,
+    "start_datetime": None,
     "end_datetime": None,
     "max_cycles": None,
     "max_duration_minutes": None,
@@ -33,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--query", type=str, default=None, help="Query string for pipeline")
     parser.add_argument("--article_count", type=int, default=None, help="Number of articles per run")
     parser.add_argument("--no_content", action='store_true', default=None, help="Flag: no_content = True (skip content fetching)")
+    parser.add_argument("--start_datetime", type=str, default=None, help="ISO datetime at which to start, e.g. 2025-11-06T17:00:00")
     parser.add_argument("--end_datetime", type=str, default=None, help="ISO datetime at which to stop, e.g. 2025-11-06T18:00:00")
     parser.add_argument("--max_cycles", type=int, default=None, help="Maximum number of pipeline runs")
     parser.add_argument("--max_duration_minutes", type=int, default=None, help="Maximum duration in minutes to keep running")
@@ -65,6 +67,7 @@ def get_config() -> Dict[str, str]:
             "article_count": cfg.get("pipeline", {}).get("article_count"),
             "no_content": cfg.get("pipeline", {}).get("no_content"),
             "minutes": cfg.get("scheduler", {}).get("minutes"),
+            "start_datetime": cfg.get("scheduler", {}).get("start_datetime"),
             "end_datetime": cfg.get("scheduler", {}).get("end_datetime"),
             "max_cycles": cfg.get("scheduler", {}).get("max_cycles"),
             "max_duration_minutes": cfg.get("scheduler", {}).get("max_duration_minutes"),

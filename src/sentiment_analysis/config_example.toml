@@ -5,6 +5,7 @@ no_content = true # Fetch news without the article body if true
 
 [scheduler]
 minutes = 5 # Run every 5 minutes
+start_datetime = "2025-11-06T17:00:00" # Start at this datetime
 end_datetime = "2025-11-06T18:00:00" # Stop at this datetime
 max_cycles = 10 # Stop after N amount of runs
 max_duration_minutes = 60 # Stop after N amount of minutes
