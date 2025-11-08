@@ -11,7 +11,7 @@ import calendar
 import os
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import feedparser
 
@@ -74,7 +74,7 @@ def fetch_news_rss(
     no_content: bool = False,
     request_delay: float = 0.0,
     use_smart_search: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Fetch news from RSS feeds with explicit parameters and return articles list.
 
@@ -91,7 +91,7 @@ def fetch_news_rss(
         use_smart_search: Use smart search if True for body content fetching (default: False).
 
     Returns:
-        List of article dictionaries with title, url, timestamp, source, and optionally body.
+        list[dict[str, Any]]: List of article dictionaries with title, url, timestamp, source, and optionally body.
     """
     rss_url = f"https://news.google.com/rss/search?q={query}"
     feed = feedparser.parse(rss_url)

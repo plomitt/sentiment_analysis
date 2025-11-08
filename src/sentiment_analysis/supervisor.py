@@ -38,7 +38,7 @@ def job_wrapper(
     max_duration_minutes: int | None,
     use_smart_search: bool = False,
     use_reasoning: bool = None,
-    temperature: float = None
+    temperature: float | None = None
 ):
     """
     Execute a single pipeline run and check end conditions.
@@ -97,7 +97,7 @@ def main(
     max_duration_minutes: int | None,
     use_smart_search: bool = False,
     use_reasoning: bool = None,
-    temperature: float = None
+    temperature: float | None = None
 ):
     """
     Run the sentiment analysis pipeline on a scheduled interval with end conditions.

@@ -5,6 +5,8 @@ This module contains specialized prompts and utility functions for
 trading-focused sentiment scoring of Bitcoin news articles.
 """
 
+from typing import Any
+
 MISSING_TITLE_TEXT = "No title available"
 MISSING_BODY_TEXT = "No body content available"
 
@@ -69,23 +71,23 @@ def get_system_prompt() -> str:
     return "You are an expert Bitcoin trading analyst."
 
 
-def normalize_text(text: str, fallback_text: str) -> str:
+def normalize_text(text: str | None, fallback_text: str) -> str:
     """
     Helper function to normalize text by handling None, empty strings, and missing values.
 
     Args:
-        text: The text to normalize
-        fallback_text: The text to use if original is None, empty, or missing
+        text: The text to normalize (can be None).
+        fallback_text: The text to use if original is None, empty, or missing.
 
     Returns:
-        Normalized text or fallback text
+        str: Normalized text or fallback text.
     """
     if text is None or text == '':
         return fallback_text
     return text
 
 
-def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_articles: list = None, use_reasoning: bool = True) -> str:
+def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_articles: list[dict[str, Any]] | None = None, use_reasoning: bool = True) -> str:
     """
     Get the main sentiment analysis system prompt for Bitcoin news.
 
@@ -94,14 +96,14 @@ def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_ar
     where 1 suggests 'sell' and 10 suggests 'buy'.
 
     Args:
-        title: The title of the article to analyze
-        body: The body/content of the article to analyze
+        title: The title of the article to analyze.
+        body: The body/content of the article to analyze.
         similar_articles: Optional list of similar articles with their sentiment scores
-            for reference in maintaining scoring consistency
-        use_reasoning: Whether to include reasoning in the analysis (default: True)
+            for reference in maintaining scoring consistency (default: None).
+        use_reasoning: Whether to include reasoning in the analysis (default: True).
 
     Returns:
-        The complete sentiment analysis prompt with examples and scoring framework.
+        str: The complete sentiment analysis prompt with scoring framework.
     """
 
     # Add similarity-based scoring instructions if similar articles are provided

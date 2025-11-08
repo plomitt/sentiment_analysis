@@ -13,7 +13,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -263,7 +263,6 @@ def validate_env_config(required_vars: list[str]) -> bool:
 
     Args:
         required_vars: List of required environment variable names.
-        logger: Optional logger instance. If not provided, a new one will be created.
 
     Returns:
         bool: True if all required environment variables are present, False otherwise.

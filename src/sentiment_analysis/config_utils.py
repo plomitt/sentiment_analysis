@@ -3,7 +3,6 @@ import datetime
 from pathlib import Path
 from pprint import pprint
 import tomllib
-from typing import Dict
 
 from sentiment_analysis.utils import setup_logging
 
@@ -54,12 +53,12 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def get_config() -> Dict[str, str]:
+def get_config() -> dict[str, str | int | float | bool | None | datetime.datetime]:
     """
     Get config for the supervisor. Parameter order: config file > CLI > defaults.
 
     Returns:
-        Dict[str, str]: Config dictionary
+        dict[str, str | int | float | bool | None | datetime.datetime]: Config dictionary with various types.
     """
 
     # CLI args
@@ -103,10 +102,10 @@ def get_config() -> Dict[str, str]:
             final_config[key] = cli_args[key]
     
     # Parse dates
-    if final_config["end_datetime"] is not None:
+    if final_config["end_datetime"] is not None and isinstance(final_config["end_datetime"], str):
         final_config["end_datetime"] = datetime.datetime.fromisoformat(final_config["end_datetime"])
 
-    if final_config["start_datetime"] is not None:
+    if final_config["start_datetime"] is not None and isinstance(final_config["start_datetime"], str):
         final_config["start_datetime"] = datetime.datetime.fromisoformat(final_config["start_datetime"])
     
     return final_config

@@ -1,7 +1,7 @@
 
 import os
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 from decimal import Decimal, InvalidOperation
 
 import psycopg
@@ -41,7 +41,7 @@ def get_postgres_connection_string() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
-def save_article_to_db(article: Dict[str, Any], cur: psycopg.Cursor) -> bool:
+def save_article_to_db(article: dict[str, Any], cur: psycopg.Cursor) -> bool:
     """
     Save a single analyzed article to the PostgreSQL database with upsert logic.
 
@@ -147,7 +147,7 @@ def save_article_to_db(article: Dict[str, Any], cur: psycopg.Cursor) -> bool:
         logger.debug(f"Article data: {article_data}")
         raise
 
-def rebuild_vector_index(m: int = COSINE_M, ef_construction: int = COSINE_EF_CONSTRUCTION):
+def rebuild_vector_index(m: int = COSINE_M, ef_construction: int = COSINE_EF_CONSTRUCTION) -> None:
     """
     Rebuild the vector index in the PostgreSQL database if needed.
     """

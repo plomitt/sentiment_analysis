@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def parse_interval_minutes(interval_minutes):
+def parse_interval_minutes(interval_minutes: str | int) -> str | int | None:
     # Parse interval_minutes
     try:
         if str(interval_minutes).lower() == "all":
@@ -112,7 +112,7 @@ def parse_interval_minutes(interval_minutes):
         return None
 
 
-def determine_input_file(base_input_file, input_dir):
+def determine_input_file(base_input_file: str | None, input_dir: str) -> str | None:
     # Determine input file
     if base_input_file:
         # Manual file specified
@@ -247,7 +247,7 @@ def calculate_discrete_rolling_average(
         time_bins.append(start_time_bin)
 
     # Calculate average sentiment for each time bin
-    bin_averages = []
+    bin_averages: list[float] = []
     bin_centers = []
 
     for i, bin_start in enumerate(time_bins):
@@ -505,13 +505,13 @@ def create_charts(
 
 
 def generate_sentiment_charts(
-    records,
-    window_minutes=5,
-    interval_minutes="60",
-    title=None,
-    dpi=300,
-    max_points=400,
-):
+    records: list[dict[str, Any]],
+    window_minutes: int = 5,
+    interval_minutes: str | int = "60",
+    title: str | None = None,
+    dpi: int = 300,
+    max_points: int = 400,
+) -> list[str] | None:
     """
     Generate sentiment charts with explicit parameters and return base64 images.
 
@@ -565,7 +565,7 @@ def generate_sentiment_charts(
         return None
 
 
-def save_results_to_files(args, images, input_file):
+def save_results_to_files(args: argparse.Namespace, images: list[str], input_file: str) -> None:
     timestamped_filename = make_timestamped_filename(input_file, "sentiments", "chart", "png")
 
     # Save images to files

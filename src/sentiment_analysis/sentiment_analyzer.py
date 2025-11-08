@@ -123,12 +123,12 @@ def create_client() -> Instructor:
 
 
 def analyze_article(
-    title: str, 
+    title: str,
     body: str | None,
     client: Instructor,
-    nearest_similar_articles: list[dict[str, Any]] | None = None, 
+    nearest_similar_articles: list[dict[str, Any]] | None = None,
     use_reasoning: bool = True,
-    temperature: float = 0.1 # Lower temperature for more consistent scoring
+    temperature: float = 0.1
 ) -> SentimentAnalysisWithReasoning:
     """
     Analyze a single article for sentiment.
@@ -139,10 +139,10 @@ def analyze_article(
         client: Instructor client instance.
         nearest_similar_articles: List of nearest similar articles (optional).
         use_reasoning: Whether to use reasoning in the analysis (default: True).
-        temperature: Temperature for the analysis (default: 0.1).
+        temperature: Temperature for the analysis, lower values provide more consistent scoring (default: 0.1).
 
     Returns:
-        SentimentAnalysis object with score and reasoning.
+        SentimentAnalysisWithReasoning: Object with score and reasoning.
     """
     # Handle None or empty body gracefully
     body_content = body if body else ""
@@ -173,17 +173,17 @@ def analyze_article(
         return SentimentAnalysisWithReasoning(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
-def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool = None, temperature: float = None) -> list[dict[str, Any]]:
+def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool | None = None, temperature: float | None = None) -> list[dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
     Args:
         articles: List of article dictionaries with title, body, timestamp, url.
-        use_reasoning: Whether to use reasoning in the analysis.
-        temperature: Temperature for the analysis.
+        use_reasoning: Whether to use reasoning in the analysis (default: None).
+        temperature: Temperature for the analysis (default: None).
 
     Returns:
-        List of ArticleWithSentiment objects as dictionaries.
+        list[dict[str, Any]]: List of ArticleWithSentiment objects as dictionaries.
     """
     client = create_client()
 

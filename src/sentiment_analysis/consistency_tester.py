@@ -10,7 +10,7 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 # File I/O Functions for Test News Dataset
 def save_test_news_file(
-    articles: List[Dict[str, Any]], consistency_dir: str = "consistency"
-) -> Optional[str]:
+    articles: list[dict[str, Any]], consistency_dir: str = "consistency"
+) -> str | None:
     """Save test news articles to timestamped JSON file.
 
     Args:
@@ -70,7 +70,7 @@ def save_test_news_file(
         return None
 
 
-def load_test_news_file(filepath: str) -> List[Dict[str, Any]]:
+def load_test_news_file(filepath: str) -> list[dict[str, Any]]:
     """Load test news articles from JSON file.
 
     Args:
@@ -99,7 +99,7 @@ def patch_test_news_bodies(
     request_delay: float = 1.0,
     stop_on_rate_limit: bool = True,
     use_smart_search: bool = True,
-) -> Optional[str]:
+) -> str | None:
     """Patch missing article body content in a test news file.
 
     Loads articles from a test_news file, fetches missing body content using
@@ -320,7 +320,7 @@ def create_consistency_dataset(
     delay_seconds: int = 1,
     consistency_dir: str = "consistency",
     use_smart_search: bool = True,
-) -> Optional[str]:
+) -> str | None:
     """Create a testing dataset of unique articles with embeddings.
 
     Fetches news articles in batches until desired count is reached or max iterations
@@ -445,8 +445,8 @@ def create_consistency_dataset(
 
 # File I/O Functions for Test Scores
 def save_test_scores_file(
-    articles: List[Dict[str, Any]], run_dir: str
-) -> Optional[str]:
+    articles: list[dict[str, Any]], run_dir: str
+) -> str | None:
     """Save test scores to timestamped JSON file in run directory.
 
     Args:
@@ -477,7 +477,7 @@ def save_test_scores_file(
         return None
 
 
-def load_test_scores_file(filepath: str) -> List[Dict[str, Any]]:
+def load_test_scores_file(filepath: str) -> list[dict[str, Any]]:
     """Load test scores from JSON file.
 
     Args:
@@ -500,11 +500,11 @@ def load_test_scores_file(filepath: str) -> List[Dict[str, Any]]:
 
 # Pipeline Copy for Testing
 def run_pipeline_copy(
-    articles: List[Dict[str, Any]],
+    articles: list[dict[str, Any]],
     similarity_mode: bool = False,
     use_reasoning: bool = None,
     temperature: float = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Run sentiment analysis pipeline and return results without saving to DB.
 
     This is a modified copy of run_pipeline that returns analyzed articles
@@ -559,13 +559,13 @@ def run_pipeline_copy(
 
 # Main Consistency Testing Function
 def run_consistency_test(
-    articles: List[Dict[str, Any]],
+    articles: list[dict[str, Any]],
     n_runs: int = 10,
     similarity_mode: bool = False,
     consistency_dir: str = "consistency",
     use_reasoning: bool = None,
     temperature: float = None
-) -> Optional[str]:
+) -> str | None:
     """Run consistency test on articles across multiple runs.
 
     For each article, runs sentiment analysis N times and collects all scores
@@ -674,7 +674,7 @@ def run_consistency_test(
 
 
 # Statistical Analysis Functions
-def calculate_consistency_metrics(scores: List[float]) -> Dict[str, float]:
+def calculate_consistency_metrics(scores: list[float]) -> dict[str, float]:
     """Calculate consistency metrics for a list of scores.
 
     Args:
@@ -727,8 +727,8 @@ def calculate_consistency_metrics(scores: List[float]) -> Dict[str, float]:
 
 
 def create_consistency_visualizations(
-    articles: List[Dict[str, Any]], output_dir: str
-) -> List[str]:
+    articles: list[dict[str, Any]], output_dir: str
+) -> list[str]:
     """Create visualization plots for consistency analysis.
 
     Args:
@@ -888,7 +888,7 @@ def create_consistency_visualizations(
     return plot_files
 
 
-def analyze_consistency_results(test_scores_file: str) -> Optional[str]:
+def analyze_consistency_results(test_scores_file: str) -> str | None:
     """Analyze consistency test results and generate report.
 
     Args:
@@ -1042,7 +1042,7 @@ def run_full_consistency_test(
     use_smart_search: bool = True,
     use_reasoning: bool = True,
     temperature: float = 0.1
-) -> Dict[str, Optional[str]]:
+) -> dict[str, str | None]:
     """Run the complete consistency testing pipeline.
 
     Orchestrates the entire consistency testing process:
@@ -1164,7 +1164,7 @@ def run_full_consistency_test(
 
 
 # Interactive CLI Helper Functions
-def get_user_choice(prompt: str, valid_choices: List[str]) -> str:
+def get_user_choice(prompt: str, valid_choices: list[str]) -> str:
     """Get user choice from a list of valid options.
 
     Args:

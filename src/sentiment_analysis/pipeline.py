@@ -1,7 +1,7 @@
 import time
 import psycopg
 from pgvector.psycopg import register_vector
-from typing import Dict, List, Any, Optional, Set
+from typing import Any
 from instructor import Instructor
 from sentence_transformers import SentenceTransformer
 
@@ -13,7 +13,7 @@ from sentiment_analysis.utils import setup_logging
 
 logger = setup_logging(__name__)
 
-def get_existing_article_urls() -> Set[str]:
+def get_existing_article_urls() -> set[str]:
     """
     Fetch all existing article URLs from the database.
 
@@ -38,7 +38,7 @@ def get_existing_article_urls() -> Set[str]:
         logger.error(f"Failed to fetch existing article URLs: {e}")
         raise
 
-def filter_duplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_duplicate_articles(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Filter out articles that already exist in the database.
 
@@ -90,14 +90,26 @@ def filter_duplicate_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, 
         return articles
 
 
-def make_embedding_text(article: Dict[str, Any]) -> str:
+def make_embedding_text(article: dict[str, Any]) -> str:
+    """
+    Create embedding text from article title and body.
+
+    Combines title and body text, truncating to 1000 characters if needed
+    to create suitable input for text embedding models.
+
+    Args:
+        article: Article dictionary containing title and body keys.
+
+    Returns:
+        str: Combined text from title and body, truncated to 1000 characters.
+    """
     title = article.get("title", "")
     body = article.get("body", "")
     text = f"{title} {body}"
     truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
     return truncated_text
 
-def get_embedded_articles(articles: List[Dict[str, Any]], batch_size: Optional[int] = 32) -> List[Dict[str, Any]]:
+def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int | None = 32) -> list[dict[str, Any]]:
     """
     Generate embeddings for a batch of analyzed articles using batch processing.
 
@@ -158,7 +170,18 @@ def get_embedded_articles(articles: List[Dict[str, Any]], batch_size: Optional[i
         raise
 
 
-def fetch_similar_articles(conn: psycopg.Connection, embedding: List, limit: int = 5) -> List[Dict[str, Any]]:
+def fetch_similar_articles(conn: psycopg.Connection, embedding: list, limit: int = 5) -> list[dict[str, Any]]:
+    """
+    Fetch similar articles from database using vector similarity.
+
+    Args:
+        conn: PostgreSQL database connection.
+        embedding: Vector embedding to find similar articles for.
+        limit: Maximum number of similar articles to return (default: 5).
+
+    Returns:
+        list[dict[str, Any]]: List of similar articles with title, body, and sentiment_score.
+    """
     with conn.cursor() as cur:
         # Using cosine distance
         cur.execute(
@@ -175,7 +198,17 @@ def fetch_similar_articles(conn: psycopg.Connection, embedding: List, limit: int
     
     return similar_articles
 
-def get_enriched_articles(articles: List[Dict[str, Any]], limit: int = 5) -> List[Dict[str, Any]]:
+def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
+    """
+    Enrich articles with similar articles from the database.
+
+    Args:
+        articles: List of articles with embedding vectors.
+        limit: Maximum number of similar articles to find per article (default: 5).
+
+    Returns:
+        list[dict[str, Any]]: List of articles enriched with nearest_similar_articles key.
+    """
     if not articles:
         logger.warning("No articles provided for enrichment")
         return []
@@ -213,7 +246,21 @@ def get_enriched_articles(articles: List[Dict[str, Any]], limit: int = 5) -> Lis
         return articles
 
 
-def get_analysis_results(title: str, body: str, nearest_similar_articles: list[dict[str, Any]], client: Instructor, use_reasoning: bool = None, temperature: float = None) -> tuple[str, str, bool]:
+def get_analysis_results(title: str, body: str, nearest_similar_articles: list[dict[str, Any]], client: Instructor, use_reasoning: bool | None = None, temperature: float | None = None) -> tuple[str, str, bool]:
+    """
+    Analyze sentiment for an article and return results.
+
+    Args:
+        title: Article title.
+        body: Article body text.
+        nearest_similar_articles: List of similar articles for context.
+        client: Instructor client for AI analysis.
+        use_reasoning: Whether to use reasoning in analysis (default: None).
+        temperature: Temperature for AI model (default: None).
+
+    Returns:
+        tuple[str, str, bool]: Tuple containing (score, reasoning, success_flag).
+    """
     sentiment_result = analyze_article(title, body, client, nearest_similar_articles=nearest_similar_articles, use_reasoning=use_reasoning, temperature=temperature)
     sentiment_data = sentiment_result.model_dump()
 
@@ -223,7 +270,19 @@ def get_analysis_results(title: str, body: str, nearest_similar_articles: list[d
 
     return score, reasoning, sentiment_analysis_success
 
-def get_analyzed_article(article: Dict[str, Any], client: Instructor, use_reasoning: bool = None, temperature: float = None) -> Dict[str, Any]:
+def get_analyzed_article(article: dict[str, Any], client: Instructor, use_reasoning: bool | None = None, temperature: float | None = None) -> dict[str, Any]:
+    """
+    Analyze sentiment for a single article.
+
+    Args:
+        article: Article dictionary containing title, body, and nearest_similar_articles.
+        client: Instructor client for AI analysis.
+        use_reasoning: Whether to use reasoning in analysis (default: None).
+        temperature: Temperature for AI model (default: None).
+
+    Returns:
+        dict[str, Any]: Article enriched with sentiment analysis results.
+    """
     # Extract article data
     title = article.get("title", "")
     body = article.get("body", "")
@@ -239,7 +298,7 @@ def get_analyzed_article(article: Dict[str, Any], client: Instructor, use_reason
 
     return analyzed_article
 
-def get_analyzed_articles(articles: List[Dict[str, Any]], use_reasoning: bool = None, temperature: float = None) -> List[Dict[str, Any]]:
+def get_analyzed_articles(articles: list[dict[str, Any]], use_reasoning: bool | None = None, temperature: float | None = None) -> list[dict[str, Any]]:
     if not articles:
         logger.warning("No articles provided for sentiment analysis")
         return []
@@ -276,7 +335,7 @@ def get_analyzed_articles(articles: List[Dict[str, Any]], use_reasoning: bool = 
         raise
 
 
-def save_articles_to_db(articles: List[Dict[str, Any]]) -> int:
+def save_articles_to_db(articles: list[dict[str, Any]]) -> int:
     """
     Process a batch of articles through sentiment analysis and save to database.
 
@@ -286,11 +345,14 @@ def save_articles_to_db(articles: List[Dict[str, Any]]) -> int:
 
     Args:
         articles: List of article dictionaries to process. Each article
-        should contain keys: title, body, source, url, timestamp, unix_timestamp.
+            should contain keys: title, body, source, url, timestamp, unix_timestamp.
+
+    Returns:
+        int: Number of articles successfully saved to the database.
     """
     if not articles:
         logger.info("No articles to save")
-        return []
+        return 0
 
     total_articles = len(articles)
     processed_articles = 0
@@ -345,11 +407,13 @@ def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bo
     to the PostgreSQL database.
 
     Args:
-        query: Search query for RSS feed.
-        article_count: Number of articles to fetch.
-        no_content: Skip fetching article content if True.
-        use_similarity_scoring: Use similarity-based scoring for sentiment analysis if True.
-        use_smart_search: Use smart search if True for body content fetching.    
+        query: Search query for RSS feed (default: "bitcoin").
+        article_count: Number of articles to fetch (default: 10).
+        no_content: Skip fetching article content if True (default: True).
+        use_similarity_scoring: Use similarity-based scoring for sentiment analysis if True (default: True).
+        use_smart_search: Use smart search if True for body content fetching (default: False).
+        use_reasoning: Whether to use reasoning in sentiment analysis (default: True).
+        temperature: Temperature for AI model (default: 0.1).
     """
     try:
         logger.info("Starting pipeline")
