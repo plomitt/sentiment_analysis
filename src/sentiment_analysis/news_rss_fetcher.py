@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 
 import feedparser
 
-from sentiment_analysis.searxng_search import searxng_search
+from sentiment_analysis.searxng_search import searxng_search, smart_searxng_search
 from sentiment_analysis.utils import (
     make_timestamped_filename,
     save_json_data,
@@ -58,6 +58,34 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     return args
+
+
+def fetch_article_body_content(title: str, searxng_url: str | None = None) -> str | None:
+    try:
+        logger.info(f"Fetching content for: {title[:50]}...")
+        search_results = smart_searxng_search(
+            queries=[title], max_results=1
+        )
+
+        if (
+            search_results.get("results")
+            and len(search_results["results"]) > 0
+        ):
+            first_result = search_results["results"][0]
+            content = first_result.get("content")
+            if content:
+                logger.info(f"Successfully fetched content ({len(content)} chars)")
+                return content
+            else:
+                logger.warning(f"No content found in search result for: {title[:50]}")
+                return None
+        else:
+            logger.warning(f"No search results found for: {title[:50]}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Failed to fetch content for '{title[:50]}': {e!s}")
+        return None
 
 
 def fetch_news_rss(
@@ -104,23 +132,9 @@ def fetch_news_rss(
             # Fetch article content using SearXNG if not disabled
             if not no_content:
                 try:
-                    logger.info(f"Fetching content for: {entry.title[:50]}...")
-                    search_results = searxng_search(
-                        queries=[entry.title], base_url=searxng_url, max_results=1
-                    )
-
-                    if (
-                        search_results.get("results")
-                        and len(search_results["results"]) > 0
-                    ):
-                        first_result = search_results["results"][0]
-                        if first_result.get("content"):
-                            article["body"] = first_result["content"]
-                            logger.info(f"Successfully fetched content ({len(first_result['content'])} chars)")
-                        else:
-                            logger.warning(f"No content found in search result for: {entry.title[:50]}")
-                    else:
-                        logger.warning(f"No search results found for: {entry.title[:50]}")
+                    article_body = fetch_article_body_content(title=entry.title, searxng_url=searxng_url)
+                    if article_body is not None:
+                        article["body"] = article_body
 
                     # Add delay between requests to be respectful
                     if (i < len(feed.entries[:count]) - 1):  # Don't delay after the last article

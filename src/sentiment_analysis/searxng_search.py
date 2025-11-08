@@ -51,13 +51,18 @@ async def fetch_search_results(
         query_params["categories"] = category
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/json,text/plain,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
-        "DNT": "1",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
+        "DNT": "1",
+        # "Referer": "https://fairsuch.net/",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
     }
 
     url = f"{base_url}/search"
@@ -210,19 +215,149 @@ def searxng_search(
         ).result()
 
 
+def smart_searxng_search(
+    queries: list[str],
+    category: str | None = None,
+    max_results: int = 10,
+    max_cycles: int = 2,
+    fallback_instances: list[str] | None = None,
+) -> dict[str, Any]:
+    """Search using SearXNG with intelligent instance cycling for rate limit handling.
+
+    Tries local instance first, then cycles through fallback instances when
+    rate limits are encountered. Provides robust fallback behavior for reliable
+    content fetching.
+
+    Args:
+        queries: List of search queries to execute
+        category: Optional category to search in (news, images, videos, etc.)
+        max_results: Maximum number of results per query
+        max_cycles: Number of complete cycles through all instances before giving up
+        fallback_instances: List of fallback instances (uses defaults if None)
+
+    Returns:
+        Dictionary containing search results and metadata about which instance
+        succeeded and cycling behavior:
+        {
+            "results": [...],           # Search results (same format as searxng_search)
+            "category": "news",         # Search category
+            "instance_used": "https://...",  # Which instance succeeded
+            "cycles_used": 1,           # Number of cycles needed
+            "total_attempts": 3,         # Total attempts made
+            "fallback_used": True        # Whether fallback was needed
+        }
+    """
+    load_dotenv()
+    logger.info(f"Starting smart SearXNG search: {len(queries)} queries, max_cycles={max_cycles}")
+
+    # Define instance priority list
+    local_instance = os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
+    default_fallbacks = [
+        "https://searx.perennialte.ch/",
+        "https://s.mble.dk/",
+        "https://searx.sev.monster/",
+        "https://searxng.canine.tools/",
+        "https://etsi.me/",
+    ]
+
+    instances = [local_instance] + (fallback_instances or default_fallbacks)
+    total_attempts = 0
+
+    # Cycle through instances with rate limit handling
+    for cycle in range(max_cycles):
+        logger.info(f"Starting cycle {cycle + 1}/{max_cycles}")
+
+        for instance_url in instances:
+            total_attempts += 1
+            logger.debug(f"Attempt {total_attempts}: Trying {instance_url}")
+
+            try:
+                # Use the existing searxng_search function
+                result = searxng_search(
+                    queries=queries,
+                    base_url=instance_url,
+                    category=category,
+                    max_results=max_results,
+                )
+
+                # Check if we got valid results
+                if result and result.get("results"):
+                    logger.info(
+                        f"✅ Success with {instance_url} "
+                        f"(cycle {cycle + 1}, attempt {total_attempts})"
+                    )
+                    return {
+                        **result,
+                        "instance_used": instance_url,
+                        "cycles_used": cycle + 1,
+                        "total_attempts": total_attempts,
+                        "fallback_used": instance_url != local_instance,
+                    }
+                else:
+                    logger.warning(f"No results returned from {instance_url}")
+
+            except Exception as e:
+                error_str = str(e).lower()
+
+                # Check for rate limiting
+                if "429" in error_str or "too many requests" in error_str:
+                    logger.warning(
+                        f"🚫 Rate limited by {instance_url}, trying next instance"
+                    )
+                    continue
+
+                # Check for other HTTP errors
+                elif "timeout" in error_str:
+                    logger.warning(
+                        f"⏰ Timeout from {instance_url}, trying next instance"
+                    )
+                    continue
+
+                elif "connection" in error_str or "refused" in error_str:
+                    logger.warning(
+                        f"🔌 Connection error from {instance_url}, trying next instance"
+                    )
+                    continue
+
+                elif "403" in error_str or "forbidden" in error_str:
+                    logger.warning(
+                        f"🚫 Forbidden by {instance_url}, trying next instance"
+                    )
+                    continue
+
+                else:
+                    logger.warning(f"❌ Error with {instance_url}: {str(e)[:100]}...")
+                    continue
+
+    # If we get here, all instances failed after all cycles
+    logger.error(
+        f"❌ All instances failed after {max_cycles} cycles ({total_attempts} total attempts)"
+    )
+
+    return {
+        "results": [],
+        "category": category,
+        "instance_used": None,
+        "cycles_used": max_cycles,
+        "total_attempts": total_attempts,
+        "fallback_used": False,
+    }
+
+
 # Define the public API for this module
 __all__ = [
     "fetch_search_results",
     "process_search_results",
     "searxng_search",
     "searxng_search_async",
+    "smart_searxng_search",
 ]
 
 
 if __name__ == "__main__":
     # Example usage
     start_time = asyncio.get_event_loop().time()
-    results = searxng_search(queries=["weather in paris", "what is paris known for"], max_results=2)
+    results = smart_searxng_search(queries=["Bitcoin Bears See More Peril After $300 Billion Crypto Selloff (BTC) - Bloomberg.com"], max_results=2)
     elapsed_time = asyncio.get_event_loop().time() - start_time
 
     logger.info(f"Search results ({elapsed_time:.2f}s): {json.dumps(results, indent=2)}")

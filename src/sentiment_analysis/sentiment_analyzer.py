@@ -112,8 +112,7 @@ def create_client() -> Instructor:
     Returns:
         Configured client instance.
     """
-    config = {"mode": Mode.JSON}
-    client = build_client(config=config)
+    client = build_client()
     logger.info("Instructor client created for sentiment analysis")
     return client
 
