@@ -14,6 +14,7 @@ from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
 
 from sentiment_analysis.client_manager import build_client
+from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
 from sentiment_analysis.utils import (
     find_latest_file,
@@ -37,7 +38,6 @@ class SentimentAnalysis(BaseModel):
         le=10.0,
         description="Sentiment score from 1 (strong sell) to 10 (strong buy)",
     )
-    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
 
     @field_validator("score")
     @classmethod
@@ -46,6 +46,11 @@ class SentimentAnalysis(BaseModel):
         if not (1.0 <= v <= 10.0):
             raise ValueError("Score must be between 1.0 and 10.0")
         return v
+
+class SentimentAnalysisWithReasoning(SentimentAnalysis):
+    """Structured output for sentiment analysis results."""
+
+    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
 
 
 class ArticleWithSentiment(BaseModel):
@@ -59,7 +64,7 @@ class ArticleWithSentiment(BaseModel):
     unix_timestamp: int | None = Field(
         None, description="Unix timestamp for sorting and analysis"
     )
-    sentiment: SentimentAnalysis | None = Field(
+    sentiment: SentimentAnalysisWithReasoning | None = Field(
         None, description="Sentiment analysis results"
     )
 
@@ -118,8 +123,13 @@ def create_client() -> Instructor:
 
 
 def analyze_article(
-    title: str, body: str | None, client: Instructor, nearest_similar_articles: list[dict[str, Any]] | None = None
-) -> SentimentAnalysis:
+    title: str, 
+    body: str | None,
+    client: Instructor,
+    nearest_similar_articles: list[dict[str, Any]] | None = None, 
+    use_reasoning: bool = True,
+    temperature: float = 0.1 # Lower temperature for more consistent scoring
+) -> SentimentAnalysisWithReasoning:
     """
     Analyze a single article for sentiment.
 
@@ -128,6 +138,8 @@ def analyze_article(
         body: Article body content (optional - can be None or empty).
         client: Instructor client instance.
         nearest_similar_articles: List of nearest similar articles (optional).
+        use_reasoning: Whether to use reasoning in the analysis (default: True).
+        temperature: Temperature for the analysis (default: 0.1).
 
     Returns:
         SentimentAnalysis object with score and reasoning.
@@ -138,33 +150,37 @@ def analyze_article(
     try:
         # Get the formatted prompts
         system_prompt = get_system_prompt()
-        prompt = get_sentiment_analysis_prompt_with_context(title, body_content, nearest_similar_articles)
+        prompt = get_sentiment_analysis_prompt_with_context(title, body_content, nearest_similar_articles, use_reasoning)
 
         # Use Instructor to get structured output
+        final_response_model = SentimentAnalysisWithReasoning if use_reasoning else SentimentAnalysis
         sentiment = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            response_model=SentimentAnalysis,
-            temperature=0.1,  # Lower temperature for more consistent scoring
+            response_model=final_response_model,
+            temperature=temperature,
         )
 
         logger.info(f"Analysis complete - Score: {sentiment.score}")
-        return sentiment
+        result_reasoning = getattr(sentiment, 'reasoning', '')
+        return SentimentAnalysisWithReasoning(success=sentiment.success, score=sentiment.score, reasoning=result_reasoning)
 
     except Exception as e:
         logger.error(f"Error analyzing article '{title[:50]}...': {e!s}")
         # Return a neutral sentiment as fallback
-        return SentimentAnalysis(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
+        return SentimentAnalysisWithReasoning(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
-def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool = None, temperature: float = None) -> list[dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
     Args:
         articles: List of article dictionaries with title, body, timestamp, url.
+        use_reasoning: Whether to use reasoning in the analysis.
+        temperature: Temperature for the analysis.
 
     Returns:
         List of ArticleWithSentiment objects as dictionaries.
@@ -187,7 +203,7 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
             unix_timestamp = article.get("unix_timestamp", "")
 
             # Analyze sentiment
-            sentiment = analyze_article(title, body, client)
+            sentiment = analyze_article(title, body, client, nearest_similar_articles=None, use_reasoning=use_reasoning, temperature=temperature)
 
             # Create result object
             article_with_sentiment = ArticleWithSentiment(
@@ -261,6 +277,8 @@ def print_analysis_summary(articles_with_sentiment: list[dict[str, Any]]) -> Non
 
 def main() -> None:
     """Main function to run the sentiment analysis process."""
+    config = get_config()
+
     news_dir, sentiments_dir = get_file_dirs()
 
     # Find latest news file
@@ -276,7 +294,7 @@ def main() -> None:
         logger.error("No articles loaded for analysis")
         return
 
-    articles_with_sentiment = analyze_articles_batch(articles)
+    articles_with_sentiment = analyze_articles_batch(articles, use_reasoning=config["use_reasoning"], temperature=config["temperature"])
 
     # Save the results
     output_filename = make_timestamped_filename(

@@ -98,6 +98,7 @@ def patch_test_news_bodies(
     skip_existing: bool = True,
     request_delay: float = 1.0,
     stop_on_rate_limit: bool = True,
+    use_smart_search: bool = True,
 ) -> Optional[str]:
     """Patch missing article body content in a test news file.
 
@@ -180,7 +181,7 @@ def patch_test_news_bodies(
 
                 logger.debug(f"Fetching body content for article: {title}")
                 body_content = fetch_article_body_content(
-                    title=title, searxng_url=searxng_url
+                    title=title, searxng_url=searxng_url, use_smart_search=use_smart_search
                 )
 
                 if body_content and body_content.strip():
@@ -318,6 +319,7 @@ def create_consistency_dataset(
     max_iterations: int = 10,
     delay_seconds: int = 1,
     consistency_dir: str = "consistency",
+    use_smart_search: bool = True,
 ) -> Optional[str]:
     """Create a testing dataset of unique articles with embeddings.
 
@@ -329,6 +331,7 @@ def create_consistency_dataset(
         max_iterations: Maximum number of fetch attempts
         delay_seconds: Delay between iterations to allow fresh articles
         consistency_dir: Directory to save the dataset
+        use_smart_search: Use smart search for body content.
 
     Returns:
         Path to saved test news file or None if failed
@@ -349,7 +352,8 @@ def create_consistency_dataset(
             fetched_articles = fetch_news_rss(
                 query="bitcoin",
                 count=batch_size,
-                no_content=True,  # Skip content fetching for faster processing
+                no_content=True,  # Skip content fetching for faster processing,
+                use_smart_search=use_smart_search
             )
 
             if not fetched_articles:
@@ -496,7 +500,10 @@ def load_test_scores_file(filepath: str) -> List[Dict[str, Any]]:
 
 # Pipeline Copy for Testing
 def run_pipeline_copy(
-    articles: List[Dict[str, Any]], similarity_mode: bool = False
+    articles: List[Dict[str, Any]],
+    similarity_mode: bool = False,
+    use_reasoning: bool = None,
+    temperature: float = None,
 ) -> List[Dict[str, Any]]:
     """Run sentiment analysis pipeline and return results without saving to DB.
 
@@ -532,7 +539,7 @@ def run_pipeline_copy(
             enriched_articles = articles
 
         # Analyze sentiment
-        analyzed_articles = get_analyzed_articles(enriched_articles)
+        analyzed_articles = get_analyzed_articles(enriched_articles, use_reasoning=use_reasoning, temperature=temperature)
         if not analyzed_articles:
             logger.error("Failed to analyze articles in pipeline copy")
             return []
@@ -556,6 +563,8 @@ def run_consistency_test(
     n_runs: int = 10,
     similarity_mode: bool = False,
     consistency_dir: str = "consistency",
+    use_reasoning: bool = None,
+    temperature: float = None
 ) -> Optional[str]:
     """Run consistency test on articles across multiple runs.
 
@@ -612,7 +621,7 @@ def run_consistency_test(
 
         try:
             # Run pipeline copy
-            analyzed_articles = run_pipeline_copy(articles, similarity_mode)
+            analyzed_articles = run_pipeline_copy(articles, similarity_mode, use_reasoning=use_reasoning, temperature=temperature)
 
             if not analyzed_articles:
                 logger.warning(f"No analyzed articles returned in run {run_num + 1}")
@@ -1030,6 +1039,9 @@ def run_full_consistency_test(
     similarity_mode: bool = False,
     consistency_dir: str = "consistency",
     force_recreate: bool = False,
+    use_smart_search: bool = True,
+    use_reasoning: bool = True,
+    temperature: float = 0.1
 ) -> Dict[str, Optional[str]]:
     """Run the complete consistency testing pipeline.
 
@@ -1046,6 +1058,7 @@ def run_full_consistency_test(
         similarity_mode: Whether to use similarity-based scoring
         consistency_dir: Directory for all consistency test files
         force_recreate: If True, always creates new test dataset instead of reusing existing ones
+        use_smart_search: Use smart search for body content.
 
     Returns:
         Dictionary with paths to generated files or None values if failed
@@ -1088,6 +1101,7 @@ def run_full_consistency_test(
                 max_iterations=max_iterations,
                 delay_seconds=delay_seconds,
                 consistency_dir=consistency_dir,
+                use_smart_search=use_smart_search
             )
 
             if not test_news_file:
@@ -1114,6 +1128,8 @@ def run_full_consistency_test(
             n_runs=n_runs,
             similarity_mode=similarity_mode,
             consistency_dir=consistency_dir,
+            use_reasoning=use_reasoning,
+            temperature=temperature
         )
 
         if not test_scores_file:
@@ -1169,7 +1185,7 @@ def get_user_choice(prompt: str, valid_choices: List[str]) -> str:
             return None
 
 
-def get_numeric_input(prompt: str, default: int, min_val: int = 1) -> int:
+def get_numeric_input(prompt: str, default: int, min_val: int = 1, datatype: str = "int") -> int:
     """Get numeric input from user with validation.
 
     Args:
@@ -1186,7 +1202,7 @@ def get_numeric_input(prompt: str, default: int, min_val: int = 1) -> int:
             if not user_input:
                 return default
 
-            value = int(user_input)
+            value = int(user_input) if datatype == "int" else float(user_input)
             if value >= min_val:
                 return value
             print(f"Value must be at least {min_val}. Please try again.")
@@ -1321,6 +1337,10 @@ def handle_dataset_creation() -> None:
     )
     if consistency_dir is None:
         return
+    
+    use_smart_search = get_boolean_input("Use smart search? (y/n, default: y): ", True)
+    if use_smart_search is None:
+        return
 
     print(f"\nCreating consistency dataset with your parameters...")
     result = create_consistency_dataset(
@@ -1328,6 +1348,7 @@ def handle_dataset_creation() -> None:
         max_iterations=max_iterations,
         delay_seconds=delay_seconds,
         consistency_dir=consistency_dir,
+        use_smart_search=use_smart_search
     )
 
     if result:
@@ -1384,6 +1405,12 @@ def handle_patch_process() -> None:
     )
     if stop_on_rate_limit is None:
         return
+    
+    use_smart_search = get_boolean_input(
+        "Use smart search? (y/n, default: y): ", True
+    )
+    if use_smart_search is None:
+        return
 
     print(f"\nRunning patch process on: {filepath}")
     result = patch_test_news_bodies(
@@ -1392,6 +1419,7 @@ def handle_patch_process() -> None:
         skip_existing=skip_existing,
         request_delay=request_delay,
         stop_on_rate_limit=stop_on_rate_limit,
+        use_smart_search=use_smart_search
     )
 
     if result:
@@ -1444,6 +1472,18 @@ def handle_full_consistency_test() -> None:
     )
     if consistency_dir is None:
         return
+    
+    use_smart_search = get_boolean_input("Use smart search? (y/n, default: y): ", True)
+    if use_smart_search is None:
+        return
+    
+    use_reasoning = get_boolean_input("Use reasoning? (y/n, default: y): ", True)
+    if use_reasoning is None:
+        return
+    
+    temperature = get_numeric_input("Temperature (default: 0.1): ", 0.1, min_val=0, datatype="float")
+    if temperature is None:
+        return
 
     print(f"\nRunning full consistency test with your parameters...")
     result = run_full_consistency_test(
@@ -1454,6 +1494,9 @@ def handle_full_consistency_test() -> None:
         similarity_mode=similarity_mode,
         force_recreate=force_recreate,
         consistency_dir=consistency_dir,
+        use_smart_search=use_smart_search,
+        use_reasoning=use_reasoning,
+        temperature=temperature
     )
 
     if result and any(result.values()):

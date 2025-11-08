@@ -35,7 +35,10 @@ def job_wrapper(
     no_content: bool,
     end_datetime: datetime | None,
     max_cycles: int | None,
-    max_duration_minutes: int | None
+    max_duration_minutes: int | None,
+    use_smart_search: bool = False,
+    use_reasoning: bool = None,
+    temperature: float = None
 ):
     """
     Execute a single pipeline run and check end conditions.
@@ -54,6 +57,7 @@ def job_wrapper(
         end_datetime: Optional datetime when supervisor should stop.
         max_cycles: Optional maximum number of pipeline cycles to run.
         max_duration_minutes: Optional maximum runtime in minutes.
+        use_smart_search: Use smart search if True for body content fetching.
 
     Side effects:
         - Increments the cycle counter
@@ -64,7 +68,7 @@ def job_wrapper(
     cycle_counter[0] += 1
     logger.info(f"Starting pipeline run #{cycle_counter[0]}")
     try:
-        run_pipeline(query=query, article_count=article_count, no_content=no_content)
+        run_pipeline(query=query, article_count=article_count, no_content=no_content, use_smart_search=use_smart_search, use_reasoning=use_reasoning, temperature=temperature)
         logger.info(f"Pipeline run #{cycle_counter[0]} completed")
     except Exception as e:
         logger.error(f"Pipeline run #{cycle_counter[0]} failed: {e}")
@@ -90,7 +94,10 @@ def main(
     start_datetime: datetime | None,
     end_datetime: datetime | None,
     max_cycles: int | None,
-    max_duration_minutes: int | None
+    max_duration_minutes: int | None,
+    use_smart_search: bool = False,
+    use_reasoning: bool = None,
+    temperature: float = None
 ):
     """
     Run the sentiment analysis pipeline on a scheduled interval with end conditions.
@@ -107,6 +114,7 @@ def main(
         end_datetime: Optional datetime when supervisor should stop.
         max_cycles: Optional maximum number of pipeline cycles to run.
         max_duration_minutes: Optional maximum runtime in minutes.
+        use_smart_search: Use smart search if True for body content fetching.
 
     Note:
         This function blocks until one of the end conditions is met
@@ -141,7 +149,10 @@ def main(
             'no_content': no_content,
             'end_datetime': end_datetime,
             'max_cycles': max_cycles,
-            'max_duration_minutes': max_duration_minutes
+            'max_duration_minutes': max_duration_minutes,
+            'use_smart_search': use_smart_search,
+            'use_reasoning': use_reasoning,
+            'temperature': temperature
         }
     )
 
@@ -164,12 +175,15 @@ if __name__ == "__main__":
     config = get_config()
 
     main(
-        minute_interval=config["minutes"],
+        minute_interval=config["interval_min"],
         query=config["query"],
         article_count=config["article_count"],
         no_content=config["no_content"],
         start_datetime=config["start_datetime"],
         end_datetime=config["end_datetime"],
         max_cycles=config["max_cycles"],
-        max_duration_minutes=config["max_duration_minutes"]
+        max_duration_minutes=config["max_duration_minutes"],
+        use_smart_search=config["use_smart_search"],
+        use_reasoning=config["use_reasoning"],
+        temperature=config["temperature"]
     )

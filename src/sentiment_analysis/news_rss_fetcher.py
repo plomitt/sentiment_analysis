@@ -7,7 +7,6 @@ fetches article content using SearXNG search engine.
 
 from __future__ import annotations
 
-import argparse
 import calendar
 import os
 import sys
@@ -16,6 +15,7 @@ from typing import Any, Dict, List
 
 import feedparser
 
+from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.searxng_search import searxng_search, smart_searxng_search
 from sentiment_analysis.utils import (
     make_timestamped_filename,
@@ -27,45 +27,24 @@ from sentiment_analysis.utils import (
 logger = setup_logging(__name__)
 
 
-def parse_args() -> argparse.Namespace:
+def fetch_article_body_content(title: str, searxng_url: str | None = None, use_smart_search: bool = False) -> str | None:
     """
-    Parse command line arguments for news fetching.
+    Fetch article body content using SearXNG search.
+
+    Args:
+        title: Article title.
+        searxng_url: SearXNG instance url.
+        use_smart_search: Use smart search if True (default: False).
 
     Returns:
-        Parsed arguments namespace.
+        Article body content as a string, or None if not found.
     """
-    parser = argparse.ArgumentParser(description="Fetch Bitcoin news and save to JSON")
-    parser.add_argument(
-        "--query", default="bitcoin", help="Search query (default: bitcoin)"
-    )
-    parser.add_argument(
-        "--count", type=int, default=10, help="Number of articles to save (default: 10)"
-    )
-    parser.add_argument(
-        "--searxng-url",
-        help="SearXNG instance URL (default: from SEARXNG_BASE_URL env var or http://localhost:8080)",
-    )
-    parser.add_argument(
-        "--no-content",
-        action="store_true",
-        help="Skip fetching article content from SearXNG",
-    )
-    parser.add_argument(
-        "--request-delay",
-        type=float,
-        default=0.0,
-        help="Delay between SearXNG requests in seconds (default: 0.0)",
-    )
-    args = parser.parse_args()
-    return args
-
-
-def fetch_article_body_content(title: str, searxng_url: str | None = None) -> str | None:
     try:
         logger.info(f"Fetching content for: {title[:50]}...")
-        search_results = smart_searxng_search(
-            queries=[title], max_results=1
-        )
+        if use_smart_search:
+            search_results = smart_searxng_search(queries=[title], max_results=1, base_url=searxng_url)
+        else:
+            search_results = searxng_search(queries=[title], max_results=1, base_url=searxng_url)
 
         if (
             search_results.get("results")
@@ -94,6 +73,7 @@ def fetch_news_rss(
     searxng_url: str | None = None,
     no_content: bool = False,
     request_delay: float = 0.0,
+    use_smart_search: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Fetch news from RSS feeds with explicit parameters and return articles list.
@@ -108,6 +88,7 @@ def fetch_news_rss(
         searxng_url: SearXNG instance URL (optional - uses env var or default if None).
         no_content: Skip fetching article content if True (default: False).
         request_delay: Delay between SearXNG requests in seconds (default: 0.0).
+        use_smart_search: Use smart search if True for body content fetching (default: False).
 
     Returns:
         List of article dictionaries with title, url, timestamp, source, and optionally body.
@@ -132,7 +113,7 @@ def fetch_news_rss(
             # Fetch article content using SearXNG if not disabled
             if not no_content:
                 try:
-                    article_body = fetch_article_body_content(title=entry.title, searxng_url=searxng_url)
+                    article_body = fetch_article_body_content(title=entry.title, searxng_url=searxng_url, use_smart_search=use_smart_search)
                     if article_body is not None:
                         article["body"] = article_body
 
@@ -162,14 +143,14 @@ def fetch_news_rss(
 
 
 def save_articles_to_json(
-    articles: list[dict[str, Any]], args: argparse.Namespace
+    articles: list[dict[str, Any]], no_content: bool = False
 ) -> None:
     """
     Save articles to JSON file.
 
     Args:
         articles: List of article dictionaries.
-        args: Parsed command line arguments.
+       no_content: Skip saving article content if True (default: False).
     """
     # Save articles to JSON file using existing logic
     news_dir = "src/sentiment_analysis/news"
@@ -181,7 +162,7 @@ def save_articles_to_json(
     articles_with_content = sum(1 for article in articles if article.get("body"))
     content_msg = (
         "(content fetching disabled)"
-        if args.no_content
+        if no_content
         else f"({articles_with_content}/{len(articles)} with content)"
     )
     logger.info(f"Saved {len(articles)} articles to {filepath} {content_msg}")
@@ -189,20 +170,21 @@ def save_articles_to_json(
 
 def main() -> None:
     """Main function to fetch news articles and save them to JSON."""
-    args = parse_args()
+    config = get_config()
 
     articles = fetch_news_rss(
-        query=args.query,
-        count=args.count,
-        searxng_url=args.searxng_url,
-        no_content=args.no_content,
-        request_delay=args.request_delay,
+        query=config["query"],
+        count=config["article_count"],
+        searxng_url=config["searxng_url"],
+        no_content=config["no_content"],
+        request_delay=config["request_delay"],
+        use_smart_search=config["use_smart_search"]
     )
 
     if not articles:
         sys.exit(1)
 
-    save_articles_to_json(articles, args)
+    save_articles_to_json(articles, config["no_content"])
 
 
 # Define the public API for this module

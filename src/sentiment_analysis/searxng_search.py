@@ -220,6 +220,7 @@ def smart_searxng_search(
     category: str | None = None,
     max_results: int = 10,
     max_cycles: int = 2,
+    base_url: str | None = None,
     fallback_instances: list[str] | None = None,
 ) -> dict[str, Any]:
     """Search using SearXNG with intelligent instance cycling for rate limit handling.
@@ -251,7 +252,7 @@ def smart_searxng_search(
     logger.info(f"Starting smart SearXNG search: {len(queries)} queries, max_cycles={max_cycles}")
 
     # Define instance priority list
-    local_instance = os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
+    local_instance = base_url or os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
     default_fallbacks = [
         "https://searx.perennialte.ch/",
         "https://s.mble.dk/",

@@ -85,7 +85,7 @@ def normalize_text(text: str, fallback_text: str) -> str:
     return text
 
 
-def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_articles: list = None) -> str:
+def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_articles: list = None, use_reasoning: bool = True) -> str:
     """
     Get the main sentiment analysis system prompt for Bitcoin news.
 
@@ -98,6 +98,7 @@ def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_ar
         body: The body/content of the article to analyze
         similar_articles: Optional list of similar articles with their sentiment scores
             for reference in maintaining scoring consistency
+        use_reasoning: Whether to include reasoning in the analysis (default: True)
 
     Returns:
         The complete sentiment analysis prompt with examples and scoring framework.
@@ -134,10 +135,14 @@ def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_ar
         Body: {normalize_text(body, MISSING_BODY_TEXT)}
 
         Provide your analysis in the following format:
-        Score: [Your score from 1.0 to 10.0]
-        Reasoning: [Your concise reasoning focusing on trading implications and market impact]
         Success: [Whether the analysis was successful, bool]
-    """
+        Score: [Your score from 1.0 to 10.0]"""
+
+    if use_reasoning:
+        similar_articles_section += """
+        Reasoning: [Your concise reasoning focusing on trading implications and market impact]
+        """
+
 
     return BASE_PROMPT + similar_articles_section
 
