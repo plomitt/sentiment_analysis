@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
 """
 Consistency testing script for LLM sentiment analyzer.
 
 This module provides comprehensive testing functionality to validate the consistency
 of sentiment analysis scores across multiple runs of the same articles.
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -1510,6 +1513,9 @@ def handle_full_consistency_test() -> None:
     else:
         print("❌ Full consistency test failed")
 
+
+# Define the public API for this module
+__all__ = []
 
 if __name__ == "__main__":
     interactive_cli()

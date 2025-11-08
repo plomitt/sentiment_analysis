@@ -633,7 +633,6 @@ __all__ = [
     "filter_data_by_time",
     "generate_sentiment_charts",
     "load_sentiment_data",
-    "main",
     "parse_args",
     "parse_interval_minutes",
     "save_results_to_files",

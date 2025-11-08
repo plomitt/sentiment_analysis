@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Prompt management for Bitcoin news sentiment analysis.
 

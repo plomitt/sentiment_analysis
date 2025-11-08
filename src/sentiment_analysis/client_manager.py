@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Client management for AI model connections.
 

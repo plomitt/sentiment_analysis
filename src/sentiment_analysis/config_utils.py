@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+"""
+Configuration management utilities.
+
+This module provides configuration loading and argument parsing functionality
+for the sentiment analysis pipeline, supporting both command-line arguments
+and configuration file settings.
+"""
+
+from __future__ import annotations
+
 import argparse
 import datetime
 from pathlib import Path

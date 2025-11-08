@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+Pipeline scheduler and supervisor for automated sentiment analysis.
+
+This module provides scheduled execution of the sentiment analysis pipeline
+with configurable intervals, end conditions, and comprehensive error handling.
+"""
+
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -170,6 +178,13 @@ def main(
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler stopped via keyboard/system exit.")
+
+
+# Define the public API for this module
+__all__ = [
+    "compute_first_run",
+    "job_wrapper",
+]
 
 if __name__ == "__main__":
     config = get_config()

@@ -1,4 +1,14 @@
 
+#!/usr/bin/env python3
+"""
+Database operations and setup utilities.
+
+This module provides PostgreSQL database setup, connection management, and
+article saving functionality for the sentiment analysis system.
+"""
+
+from __future__ import annotations
+
 import os
 import logging
 from typing import Any
@@ -305,6 +315,16 @@ def run_setup() -> None:
             print("Database setup cancelled.")
     else:
         print("Invalid option. Please try again.")
+
+
+# Define the public API for this module
+__all__ = [
+    "get_postgres_connection_string",
+    "save_article_to_db",
+    "rebuild_vector_index",
+    "setup_database",
+    "run_setup",
+]
 
 if __name__ == "__main__":
     run_setup()

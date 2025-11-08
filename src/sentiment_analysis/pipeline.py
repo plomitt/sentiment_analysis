@@ -1,8 +1,19 @@
+#!/usr/bin/env python3
+"""
+Sentiment analysis pipeline orchestration.
+
+This module provides the main pipeline functionality for fetching news articles,
+analyzing sentiment, and saving results to the PostgreSQL database.
+"""
+
+from __future__ import annotations
+
 import time
-import psycopg
-from pgvector.psycopg import register_vector
 from typing import Any
+
+import psycopg
 from instructor import Instructor
+from pgvector.psycopg import register_vector
 from sentence_transformers import SentenceTransformer
 
 from sentiment_analysis.config_utils import get_config
@@ -161,7 +172,10 @@ def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int | None
         total_duration = time.perf_counter() - start_time
         avg_time_per_article = total_duration / len(articles)
 
-        logger.info(f"Successfully generated embeddings for {len(embedded_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
+        logger.info(
+            f"Successfully generated embeddings for {len(embedded_articles)} articles "
+            f"in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article)."
+        )
 
         return embedded_articles
 
@@ -237,7 +251,10 @@ def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> lis
             
             total_duration = time.perf_counter() - start_time
             avg_time_per_article = total_duration / len(enriched_articles)
-            logger.info(f"Successfully enriched {len(enriched_articles)} articles in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article).")
+            logger.info(
+                f"Successfully enriched {len(enriched_articles)} articles "
+                f"in {total_duration:.2f}s (avg: {avg_time_per_article:.3f}s per article)."
+            )
             return enriched_articles
 
     except Exception as e:
@@ -246,7 +263,14 @@ def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> lis
         return articles
 
 
-def get_analysis_results(title: str, body: str, nearest_similar_articles: list[dict[str, Any]], client: Instructor, use_reasoning: bool | None = None, temperature: float | None = None) -> tuple[str, str, bool]:
+def get_analysis_results(
+    title: str,
+    body: str,
+    nearest_similar_articles: list[dict[str, Any]],
+    client: Instructor,
+    use_reasoning: bool | None = None,
+    temperature: float | None = None
+) -> tuple[str, str, bool]:
     """
     Analyze sentiment for an article and return results.
 
@@ -261,7 +285,12 @@ def get_analysis_results(title: str, body: str, nearest_similar_articles: list[d
     Returns:
         tuple[str, str, bool]: Tuple containing (score, reasoning, success_flag).
     """
-    sentiment_result = analyze_article(title, body, client, nearest_similar_articles=nearest_similar_articles, use_reasoning=use_reasoning, temperature=temperature)
+    sentiment_result = analyze_article(
+        title, body, client,
+        nearest_similar_articles=nearest_similar_articles,
+        use_reasoning=use_reasoning,
+        temperature=temperature
+    )
     sentiment_data = sentiment_result.model_dump()
 
     sentiment_analysis_success = sentiment_data.get("success", False)
@@ -270,7 +299,12 @@ def get_analysis_results(title: str, body: str, nearest_similar_articles: list[d
 
     return score, reasoning, sentiment_analysis_success
 
-def get_analyzed_article(article: dict[str, Any], client: Instructor, use_reasoning: bool | None = None, temperature: float | None = None) -> dict[str, Any]:
+def get_analyzed_article(
+    article: dict[str, Any],
+    client: Instructor,
+    use_reasoning: bool | None = None,
+    temperature: float | None = None
+) -> dict[str, Any]:
     """
     Analyze sentiment for a single article.
 
@@ -465,6 +499,15 @@ def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bo
         logger.error(f"Pipeline failed: {e}")
         raise
 
+
+# Define the public API for this module
+__all__ = [
+    "filter_duplicate_articles",
+    "get_analyzed_articles",
+    "get_embedded_articles",
+    "get_enriched_articles",
+    "run_pipeline",
+]
 
 if __name__ == "__main__":
     config = get_config()

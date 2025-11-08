@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Bitcoin news sentiment analyzer.
 
@@ -316,7 +317,7 @@ __all__ = [
     "SentimentAnalysis",
     "analyze_article",
     "analyze_articles_batch",
-    "main",
+    "create_client",
     "print_analysis_summary",
 ]
 

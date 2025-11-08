@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 RSS news fetcher for Bitcoin news articles.
 
@@ -190,7 +191,7 @@ def main() -> None:
 # Define the public API for this module
 __all__ = [
     "fetch_news_rss",
-    "main",
+    "fetch_article_body_content",
     "save_articles_to_json",
 ]
 

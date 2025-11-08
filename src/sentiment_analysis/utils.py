@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Utility functions for sentiment analysis application.
 
