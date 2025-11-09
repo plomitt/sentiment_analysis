@@ -1,6 +1,6 @@
 [project]
 name = "sentiment-analysis"
-version = "1.0.0"
+version = "2.0.0"
 description = "Bitcoin news sentiment analysis tool with AI-powered insights"
 authors = [
     {name = "plomitt",email = "46419727+plomitt@users.noreply.github.com"}

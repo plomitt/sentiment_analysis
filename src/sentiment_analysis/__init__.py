@@ -4,7 +4,7 @@ Sentiment Analysis Package.
 A comprehensive Bitcoin news sentiment analysis tool with AI-powered insights.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "plomitt"
 __email__ = "46419727+plomitt@users.noreply.github.com"
 
