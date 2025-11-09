@@ -221,3 +221,6 @@ twitter_auth/.auth/
 
 # Supervisor/pipeline config
 src/sentiment_analysis/config.toml
+
+# macOS
+.DS_Store
