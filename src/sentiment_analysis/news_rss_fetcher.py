@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 RSS news fetcher for Bitcoin news articles.
 
@@ -7,16 +8,16 @@ fetches article content using SearXNG search engine.
 
 from __future__ import annotations
 
-import argparse
 import calendar
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, cast
 
 import feedparser
 
-from sentiment_analysis.searxng_search import searxng_search
+from sentiment_analysis.config_utils import get_config
+from sentiment_analysis.searxng_search import searxng_search, smart_searxng_search
 from sentiment_analysis.utils import (
     make_timestamped_filename,
     save_json_data,
@@ -27,37 +28,44 @@ from sentiment_analysis.utils import (
 logger = setup_logging(__name__)
 
 
-def parse_args() -> argparse.Namespace:
+def fetch_article_body_content(title: str, searxng_url: str | None = None, use_smart_search: bool = False) -> str | None:
     """
-    Parse command line arguments for news fetching.
+    Fetch article body content using SearXNG search.
+
+    Args:
+        title: Article title.
+        searxng_url: SearXNG instance url.
+        use_smart_search: Use smart search if True (default: False).
 
     Returns:
-        Parsed arguments namespace.
+        Article body content as a string, or None if not found.
     """
-    parser = argparse.ArgumentParser(description="Fetch Bitcoin news and save to JSON")
-    parser.add_argument(
-        "--query", default="bitcoin", help="Search query (default: bitcoin)"
-    )
-    parser.add_argument(
-        "--count", type=int, default=10, help="Number of articles to save (default: 10)"
-    )
-    parser.add_argument(
-        "--searxng-url",
-        help="SearXNG instance URL (default: from SEARXNG_BASE_URL env var or http://localhost:8080)",
-    )
-    parser.add_argument(
-        "--no-content",
-        action="store_true",
-        help="Skip fetching article content from SearXNG",
-    )
-    parser.add_argument(
-        "--request-delay",
-        type=float,
-        default=0.0,
-        help="Delay between SearXNG requests in seconds (default: 0.0)",
-    )
-    args = parser.parse_args()
-    return args
+    try:
+        logger.info(f"Fetching content for: {title[:50]}...")
+        if use_smart_search:
+            search_results = smart_searxng_search(queries=[title], max_results=1, base_url=searxng_url)
+        else:
+            search_results = searxng_search(queries=[title], max_results=1, base_url=searxng_url)
+
+        if (
+            search_results.get("results")
+            and len(search_results["results"]) > 0
+        ):
+            first_result = search_results["results"][0]
+            content = first_result.get("content")
+            if isinstance(content, str):
+                logger.info(f"Successfully fetched content ({len(content)} chars)")
+                return content
+            else:
+                logger.warning(f"No content found in search result for: {title[:50]}")
+                return None
+        else:
+            logger.warning(f"No search results found for: {title[:50]}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Failed to fetch content for '{title[:50]}': {e!s}")
+        return None
 
 
 def fetch_news_rss(
@@ -65,7 +73,8 @@ def fetch_news_rss(
     count: int = 10,
     searxng_url: str | None = None,
     no_content: bool = False,
-    request_delay: float = 0.0,
+    request_delay: int = 0,
+    use_smart_search: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Fetch news from RSS feeds with explicit parameters and return articles list.
@@ -80,9 +89,10 @@ def fetch_news_rss(
         searxng_url: SearXNG instance URL (optional - uses env var or default if None).
         no_content: Skip fetching article content if True (default: False).
         request_delay: Delay between SearXNG requests in seconds (default: 0.0).
+        use_smart_search: Use smart search if True for body content fetching (default: False).
 
     Returns:
-        List of article dictionaries with title, url, timestamp, source, and optionally body.
+        list[dict[str, Any]]: List of article dictionaries with title, url, timestamp, source, and optionally body.
     """
     rss_url = f"https://news.google.com/rss/search?q={query}"
     feed = feedparser.parse(rss_url)
@@ -94,54 +104,27 @@ def fetch_news_rss(
 
             article = {
                 "title": entry.title,
+                "body": "",
+                "source": entry.source.title,
                 "url": entry.link,
                 "timestamp": entry.published,
                 "unix_timestamp": calendar.timegm(entry.published_parsed),
-                "source": entry.source.title,
             }
 
             # Fetch article content using SearXNG if not disabled
             if not no_content:
                 try:
-                    logger.info(f"Fetching content for: {entry.title[:50]}...")
-                    search_results = searxng_search(
-                        queries=[entry.title], base_url=searxng_url, max_results=1
-                    )
-
-                    if (
-                        search_results.get("results")
-                        and len(search_results["results"]) > 0
-                    ):
-                        first_result = search_results["results"][0]
-                        if first_result.get("content"):
-                            article["body"] = first_result["content"]
-                            logger.info(
-                                f"Successfully fetched content ({len(first_result['content'])} chars)"
-                            )
-                        else:
-                            article["body"] = ""
-                            logger.warning(
-                                f"No content found in search result for: {entry.title[:50]}"
-                            )
-                    else:
-                        article["body"] = ""
-                        logger.warning(
-                            f"No search results found for: {entry.title[:50]}"
-                        )
+                    article_body = fetch_article_body_content(title=entry.title, searxng_url=searxng_url, use_smart_search=use_smart_search)
+                    if article_body is not None:
+                        article["body"] = article_body
 
                     # Add delay between requests to be respectful
-                    if (
-                        i < len(feed.entries[:count]) - 1
-                    ):  # Don't delay after the last article
+                    if (i < len(feed.entries[:count]) - 1):  # Don't delay after the last article
                         time.sleep(request_delay)
 
                 except Exception as e:
-                    article["body"] = ""
-                    logger.error(
-                        f"Failed to fetch content for '{entry.title[:50]}': {e!s}"
-                    )
+                    logger.error(f"Failed to fetch content for '{entry.title[:50]}': {e!s}")
             else:
-                article["body"] = ""
                 logger.info("Skipping content fetch due to no_content parameter")
 
             articles.append(article)
@@ -152,34 +135,37 @@ def fetch_news_rss(
             if no_content
             else f"({articles_with_content} with content)"
         )
-        logger.info(f"Fetched {len(articles)} articles {content_msg}")
+        logger.info(f"Fetched {len(articles)} articles {content_msg} from RSS feed")
 
         return articles
-    logger.info("No entries found")
+
+    logger.warning("No articles fetched from RSS feed")
     return []
 
 
 def save_articles_to_json(
-    articles: list[dict[str, Any]], args: argparse.Namespace
+    articles: list[dict[str, Any]], no_content: bool = False
 ) -> None:
     """
     Save articles to JSON file.
 
     Args:
         articles: List of article dictionaries.
-        args: Parsed command line arguments.
+       no_content: Skip saving article content if True (default: False).
     """
     # Save articles to JSON file using existing logic
     news_dir = "src/sentiment_analysis/news"
-    filename = make_timestamped_filename(output_name="news", logger=logger)
+    filename = make_timestamped_filename(output_name="news")
+    if filename is None:
+        raise ValueError("Failed to generate filename")
     filepath = os.path.join(news_dir, filename)
 
-    save_json_data(articles, filepath, logger)
+    save_json_data(articles, filepath)
 
     articles_with_content = sum(1 for article in articles if article.get("body"))
     content_msg = (
         "(content fetching disabled)"
-        if args.no_content
+        if no_content
         else f"({articles_with_content}/{len(articles)} with content)"
     )
     logger.info(f"Saved {len(articles)} articles to {filepath} {content_msg}")
@@ -187,26 +173,27 @@ def save_articles_to_json(
 
 def main() -> None:
     """Main function to fetch news articles and save them to JSON."""
-    args = parse_args()
+    config = get_config()
 
     articles = fetch_news_rss(
-        query=args.query,
-        count=args.count,
-        searxng_url=args.searxng_url,
-        no_content=args.no_content,
-        request_delay=args.request_delay,
+        query=str(config["query"]),
+        count=cast(int, config["article_count"]),
+        searxng_url=str(config["searxng_url"]),
+        no_content=bool(config["no_content"]),
+        request_delay=cast(int, config["request_delay"]),
+        use_smart_search=bool(config["use_smart_search"])
     )
 
     if not articles:
         sys.exit(1)
 
-    save_articles_to_json(articles, args)
+    save_articles_to_json(articles, bool(config["no_content"]))
 
 
 # Define the public API for this module
 __all__ = [
     "fetch_news_rss",
-    "main",
+    "fetch_article_body_content",
     "save_articles_to_json",
 ]
 

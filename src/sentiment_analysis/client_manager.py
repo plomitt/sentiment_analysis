@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Client management for AI model connections.
 
@@ -48,7 +49,7 @@ def get_openrouter_default_config() -> dict[str, Any]:
         "base_url": os.getenv("OPENROUTER_BASE_URL"),
         "api_key": os.getenv("OPENROUTER_API_KEY"),
         "model": os.getenv("OPENROUTER_MODEL_ID"),
-        "mode": Mode.TOOLS,
+        "mode": Mode.JSON,
     }
 
 

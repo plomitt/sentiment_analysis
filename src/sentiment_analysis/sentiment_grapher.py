@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def parse_interval_minutes(interval_minutes):
+def parse_interval_minutes(interval_minutes: str | int) -> str | int | None:
     # Parse interval_minutes
     try:
         if str(interval_minutes).lower() == "all":
@@ -112,7 +112,7 @@ def parse_interval_minutes(interval_minutes):
         return None
 
 
-def determine_input_file(base_input_file, input_dir):
+def determine_input_file(base_input_file: str | None, input_dir: str) -> str | None:
     # Determine input file
     if base_input_file:
         # Manual file specified
@@ -121,14 +121,10 @@ def determine_input_file(base_input_file, input_dir):
     else:
         # Auto-detect latest sentiment file
         logger.info("🔍 Auto-detecting latest sentiment file...")
-        latest_file = find_latest_file(input_dir, "sentiments", "json", logger)
+        latest_file = find_latest_file(input_dir, "sentiments", "json")
         if not latest_file:
-            logger.error(
-                "❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/"
-            )
-            logger.error(
-                "Please run sentiment analyzer first to generate sentiment files."
-            )
+            logger.error("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
+            logger.error("Please run sentiment analyzer first to generate sentiment files.")
             return None
         input_file = latest_file
 
@@ -139,7 +135,7 @@ def determine_input_file(base_input_file, input_dir):
 def load_sentiment_data(json_file: str) -> list[dict[str, Any]]:
     """Load and parse sentiment analysis data from JSON file."""
     try:
-        data = load_json_data(json_file, logger)
+        data = load_json_data(json_file)
 
         if not data:
             raise ValueError("JSON file is empty")
@@ -190,9 +186,7 @@ def convert_timestamps(df: pd.DataFrame) -> pd.DataFrame:
     dropped_count = initial_count - len(df)
 
     if dropped_count > 0:
-        logger.warning(
-            f"Warning: Dropped {dropped_count} records with invalid timestamps"
-        )
+        logger.warning(f"Warning: Dropped {dropped_count} records with invalid timestamps")
 
     # Sort by datetime
     df = df.sort_values("datetime").reset_index(drop=True)
@@ -220,12 +214,8 @@ def filter_data_by_time(df: pd.DataFrame, interval_minutes: str | int) -> pd.Dat
     # Filter data
     filtered_df = df[df["datetime"] >= cutoff_time].copy()
 
-    logger.info(
-        f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes"
-    )
-    logger.info(
-        f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}"
-    )
+    logger.info(f"Filtered to {len(filtered_df)} records from last {interval_minutes} minutes")
+    logger.info(f"Time range: {filtered_df['datetime'].min()} to {filtered_df['datetime'].max()}")
 
     return filtered_df
 
@@ -257,7 +247,7 @@ def calculate_discrete_rolling_average(
         time_bins.append(start_time_bin)
 
     # Calculate average sentiment for each time bin
-    bin_averages = []
+    bin_averages: list[float] = []
     bin_centers = []
 
     for i, bin_start in enumerate(time_bins):
@@ -327,7 +317,7 @@ def create_sentiment_chart(
     df: pd.DataFrame,
     chart_num: int = 1,
     total_charts: int = 1,
-    title: str = None,
+    title: str | None = None,
     dpi: int = 300,
 ) -> str:
     """Create a high-quality sentiment chart and return as base64 string."""
@@ -483,7 +473,7 @@ def create_sentiment_chart(
 def create_charts(
     df: pd.DataFrame,
     max_points: int = 400,
-    title: str = None,
+    title: str | None = None,
     dpi: int = 300,
 ) -> list:
     """Create multiple charts for large datasets and return as base64 list."""
@@ -515,13 +505,13 @@ def create_charts(
 
 
 def generate_sentiment_charts(
-    records,
-    window_minutes=5,
-    interval_minutes="60",
-    title=None,
-    dpi=300,
-    max_points=400,
-):
+    records: list[dict[str, Any]],
+    window_minutes: int = 5,
+    interval_minutes: str | int = "60",
+    title: str | None = None,
+    dpi: int = 300,
+    max_points: int = 400,
+) -> list[str] | None:
     """
     Generate sentiment charts with explicit parameters and return base64 images.
 
@@ -566,7 +556,7 @@ def generate_sentiment_charts(
             dpi,
         )
 
-        logger.info(f"✅ Chart generation complete! Generated {len(images)} chart(s)")
+        logger.info(f"Chart generation complete! Generated {len(images)} chart(s)")
 
         return images
 
@@ -575,10 +565,12 @@ def generate_sentiment_charts(
         return None
 
 
-def save_results_to_files(args, images, input_file):
-    timestamped_filename = make_timestamped_filename(
-        input_file, "sentiments", "chart", "png", logger
-    )
+def save_results_to_files(args: argparse.Namespace, images: list[str], input_file: str) -> None:
+    timestamped_filename = make_timestamped_filename(input_file, "sentiments", "chart", "png")
+
+    if timestamped_filename is None:
+        logger.error("Failed to generate timestamped filename for charts")
+        return
 
     # Save images to files
     ensure_directory(args.output_dir)
@@ -589,7 +581,7 @@ def save_results_to_files(args, images, input_file):
         image_data = base64.b64decode(images[0])
         with open(output_path, "wb") as f:
             f.write(image_data)
-        logger.info(f"✅ Chart saved to: {output_path}")
+        logger.info(f"Chart saved to: {output_path}")
     else:
         # Multiple charts case
         stem = Path(timestamped_filename).stem
@@ -604,15 +596,26 @@ def save_results_to_files(args, images, input_file):
             with open(output_path, "wb") as f:
                 f.write(image_data)
 
-        logger.info(f"✅ {len(images)} charts saved to {args.output_dir}")
+        logger.info(f"{len(images)} charts saved to {args.output_dir}")
 
 
 def main() -> None:
     """Main function with CLI interface."""
+
+    # TODO: filter out articles with failed analysis
+
     args = parse_args()
     interval_minutes = parse_interval_minutes(args.interval_minutes)
 
+    if interval_minutes is None:
+        logger.error("Invalid interval_minutes value")
+        return
+
     input_file = determine_input_file(args.input_file, args.input_dir)
+
+    if input_file is None:
+        logger.error("Failed to determine input file")
+        return
 
     # Load and process data
     logger.info("Loading sentiment data...")
@@ -628,6 +631,10 @@ def main() -> None:
         max_points=args.max_points,
     )
 
+    if images is None:
+        logger.error("Failed to generate charts")
+        return
+
     save_results_to_files(args, images, input_file)
 
 
@@ -642,7 +649,6 @@ __all__ = [
     "filter_data_by_time",
     "generate_sentiment_charts",
     "load_sentiment_data",
-    "main",
     "parse_args",
     "parse_interval_minutes",
     "save_results_to_files",

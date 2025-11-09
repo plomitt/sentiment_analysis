@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Bitcoin news sentiment analyzer.
 
@@ -8,13 +9,14 @@ sentiment scores with trading-focused reasoning.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
 
 from sentiment_analysis.client_manager import build_client
-from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context
+from sentiment_analysis.config_utils import get_config
+from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
 from sentiment_analysis.utils import (
     find_latest_file,
     load_json_data,
@@ -30,15 +32,12 @@ logger = setup_logging(__name__)
 class SentimentAnalysis(BaseModel):
     """Structured output for sentiment analysis results."""
 
+    success: bool = Field(..., description="Whether the analysis was successful")
     score: float = Field(
         ...,
         ge=1.0,
         le=10.0,
         description="Sentiment score from 1 (strong sell) to 10 (strong buy)",
-    )
-    reasoning: str = Field(
-        ...,
-        description="Concise reasoning for the score focusing on trading implications",
     )
 
     @field_validator("score")
@@ -49,18 +48,24 @@ class SentimentAnalysis(BaseModel):
             raise ValueError("Score must be between 1.0 and 10.0")
         return v
 
+class SentimentAnalysisWithReasoning(SentimentAnalysis):
+    """Structured output for sentiment analysis results."""
+
+    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
+
 
 class ArticleWithSentiment(BaseModel):
     """Article data with sentiment analysis."""
 
     title: str = Field(..., description="Article title")
     body: str | None = Field(None, description="Article body content")
+    source: str | None = Field(None, description="Article source")
     timestamp: str = Field(..., description="Article timestamp")
     url: str = Field(..., description="Article URL")
     unix_timestamp: int | None = Field(
         None, description="Unix timestamp for sorting and analysis"
     )
-    sentiment: SentimentAnalysis | None = Field(
+    sentiment: SentimentAnalysisWithReasoning | None = Field(
         None, description="Sentiment analysis results"
     )
 
@@ -97,7 +102,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         List of article dictionaries.
     """
     try:
-        articles = load_json_data(file_path, logger)
+        articles = cast(list[dict[str, Any]], load_json_data(file_path))
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -113,15 +118,19 @@ def create_client() -> Instructor:
     Returns:
         Configured client instance.
     """
-    config = {"mode": Mode.JSON}
-    client = build_client(config=config)
+    client = build_client()
     logger.info("Instructor client created for sentiment analysis")
     return client
 
 
 def analyze_article(
-    title: str, body: str | None, client: Instructor
-) -> SentimentAnalysis:
+    title: str,
+    body: str | None,
+    client: Instructor,
+    nearest_similar_articles: list[dict[str, Any]] | None = None,
+    use_reasoning: bool = True,
+    temperature: float = 0.1
+) -> SentimentAnalysisWithReasoning:
     """
     Analyze a single article for sentiment.
 
@@ -129,50 +138,53 @@ def analyze_article(
         title: Article title.
         body: Article body content (optional - can be None or empty).
         client: Instructor client instance.
+        nearest_similar_articles: List of nearest similar articles (optional).
+        use_reasoning: Whether to use reasoning in the analysis (default: True).
+        temperature: Temperature for the analysis, lower values provide more consistent scoring (default: 0.1).
 
     Returns:
-        SentimentAnalysis object with score and reasoning.
+        SentimentAnalysisWithReasoning: Object with score and reasoning.
     """
     # Handle None or empty body gracefully
     body_content = body if body else ""
 
     try:
-        # Get the formatted prompt
-        prompt = get_sentiment_analysis_prompt_with_context(title, body_content)
+        # Get the formatted prompts
+        system_prompt = get_system_prompt()
+        prompt = get_sentiment_analysis_prompt_with_context(title, body_content, nearest_similar_articles, use_reasoning)
 
         # Use Instructor to get structured output
+        final_response_model = SentimentAnalysisWithReasoning if use_reasoning else SentimentAnalysis
         sentiment = client.chat.completions.create(
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert Bitcoin trading analyst.",
-                },
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            response_model=SentimentAnalysis,
-            temperature=0.1,  # Lower temperature for more consistent scoring
+            response_model=final_response_model,
+            temperature=temperature,
         )
 
         logger.info(f"Analysis complete - Score: {sentiment.score}")
-        return sentiment
+        result_reasoning = getattr(sentiment, 'reasoning', '')
+        return SentimentAnalysisWithReasoning(success=sentiment.success, score=sentiment.score, reasoning=result_reasoning)
 
     except Exception as e:
         logger.error(f"Error analyzing article '{title[:50]}...': {e!s}")
         # Return a neutral sentiment as fallback
-        return SentimentAnalysis(
-            score=5.0, reasoning=f"Analysis failed due to error: {e!s}"
-        )
+        return SentimentAnalysisWithReasoning(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
-def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool = True, temperature: float = 0.1) -> list[dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
     Args:
         articles: List of article dictionaries with title, body, timestamp, url.
+        use_reasoning: Whether to use reasoning in the analysis (default: None).
+        temperature: Temperature for the analysis (default: None).
 
     Returns:
-        List of ArticleWithSentiment objects as dictionaries.
+        list[dict[str, Any]]: List of ArticleWithSentiment objects as dictionaries.
     """
     client = create_client()
 
@@ -185,22 +197,22 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
         try:
             # Extract article data
             title = article.get("title", "")
-            body = article.get(
-                "body", ""
-            )  # Returns empty string if body field doesn't exist
-            timestamp = article.get("timestamp", "")
+            body = article.get("body", "")
+            source = article.get("source", "")
             url = article.get("url", "")
-            unix_timestamp = article.get("unix_timestamp")
+            timestamp = article.get("timestamp", "")
+            unix_timestamp = article.get("unix_timestamp", "")
 
             # Analyze sentiment
-            sentiment = analyze_article(title, body, client)
+            sentiment = analyze_article(title, body, client, nearest_similar_articles=None, use_reasoning=use_reasoning, temperature=temperature)
 
             # Create result object
             article_with_sentiment = ArticleWithSentiment(
                 title=title,
-                body=body if body else None,  # Store None if body was empty/missing
-                timestamp=timestamp,
+                body=body,
+                source=source,
                 url=url,
+                timestamp=timestamp,
                 unix_timestamp=unix_timestamp,
                 sentiment=sentiment,
             )
@@ -215,9 +227,6 @@ def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any
             continue
 
     results_dict = [article.model_dump() for article in results]
-    logger.info(
-        f"Batch analysis complete. {len(results)} articles processed successfully"
-    )
     logger.info(f"Analysis complete! Analyzed {len(results)} articles")
     return results_dict
 
@@ -267,26 +276,14 @@ def print_analysis_summary(articles_with_sentiment: list[dict[str, Any]]) -> Non
     logger.info("=" * 50)
 
 
-def save_results_to_json(
-    output_file: str, articles_with_sentiment: list[dict[str, Any]]
-) -> None:
-    """
-    Save analysis results to JSON file.
-
-    Args:
-        output_file: Path to output file.
-        articles_with_sentiment: List of articles with sentiment analysis.
-    """
-    save_json_data(articles_with_sentiment, output_file, logger)
-    logger.info(f"Analysis complete! Results saved to {output_file}")
-
-
 def main() -> None:
     """Main function to run the sentiment analysis process."""
+    config = get_config()
+
     news_dir, sentiments_dir = get_file_dirs()
 
     # Find latest news file
-    input_file = find_latest_file(news_dir, "news", "json", logger)
+    input_file = find_latest_file(news_dir, "news", "json")
 
     if input_file is None:
         logger.error("No news files found to analyze")
@@ -297,8 +294,15 @@ def main() -> None:
     if not articles:
         logger.error("No articles loaded for analysis")
         return
+    
+    use_reasoning = cast(bool, config["use_reasoning"])
+    temperature = cast(float, config["temperature"])
 
-    articles_with_sentiment = analyze_articles_batch(articles)
+    articles_with_sentiment = analyze_articles_batch(
+        articles,
+        use_reasoning=use_reasoning,
+        temperature=temperature
+    )
 
     # Save the results
     output_filename = make_timestamped_filename(
@@ -306,10 +310,15 @@ def main() -> None:
         input_name="news",
         output_name="sentiments",
         output_filetype="json",
-        logger=logger,
     )
+
+    if output_filename is None:
+        logger.error("Failed to generate output filename")
+        return
+
     output_file = os.path.join(sentiments_dir, output_filename)
-    save_results_to_json(output_file, articles_with_sentiment)
+    save_json_data(articles_with_sentiment, output_file)
+    logger.info(f"Analysis results saved to {output_file}")
 
     print_analysis_summary(articles_with_sentiment)
 
@@ -320,9 +329,8 @@ __all__ = [
     "SentimentAnalysis",
     "analyze_article",
     "analyze_articles_batch",
-    "main",
+    "create_client",
     "print_analysis_summary",
-    "save_results_to_json",
 ]
 
 

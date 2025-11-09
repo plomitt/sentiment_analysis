@@ -1,0 +1,17 @@
+[pipeline]
+query = "bitcoin" # News fetching query
+article_count = 10 # Max amount of articles to fetch per pipeline run
+no_content = true # Fetch news without the article body if true
+request_delay = 0.0 # Delay between SearXNG requests in seconds
+use_similarity_scoring = true # Use similarity-based scoring for sentiment analysis if true
+use_smart_search = false # Use smart search for body content fetching if true
+temperature = 0.1 # Temperature for sentiment analysis
+use_reasoning = true # Use reasoning for sentiment analysis if true
+
+
+[scheduler]
+interval_min = 5 # Run every 5 minutes
+start_datetime = "2025-11-06T17:00:00" # Start at this datetime
+end_datetime = "2025-11-06T18:00:00" # Stop at this datetime
+max_cycles = 10 # Stop after N amount of runs
+max_duration_minutes = 60 # Stop after N amount of minutes
