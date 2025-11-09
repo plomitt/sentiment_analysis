@@ -84,7 +84,7 @@ def save_article_to_db(article: dict[str, Any], cur: psycopg.Cursor) -> bool:
 
     # Validate and prepare data
     try:
-        article_data = {
+        article_data: dict[str, Any] = {
             'title': str(article['title']),
             'body': article.get('body'),  # Can be None
             'source': str(article['source']),
@@ -99,6 +99,7 @@ def save_article_to_db(article: dict[str, Any], cur: psycopg.Cursor) -> bool:
 
         # Validate sentiment score range (1-10)
         score = article_data['sentiment_score']
+        assert isinstance(score, Decimal), "score should be a Decimal"
         if not (Decimal('1.0') <= score <= Decimal('10.0')):
             raise ValueError(f"Sentiment score {score} out of valid range (1.0-10.0)")
 

@@ -12,7 +12,7 @@ import calendar
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, cast
 
 import feedparser
 
@@ -53,7 +53,7 @@ def fetch_article_body_content(title: str, searxng_url: str | None = None, use_s
         ):
             first_result = search_results["results"][0]
             content = first_result.get("content")
-            if content:
+            if isinstance(content, str):
                 logger.info(f"Successfully fetched content ({len(content)} chars)")
                 return content
             else:
@@ -73,7 +73,7 @@ def fetch_news_rss(
     count: int = 10,
     searxng_url: str | None = None,
     no_content: bool = False,
-    request_delay: float = 0.0,
+    request_delay: int = 0,
     use_smart_search: bool = False,
 ) -> list[dict[str, Any]]:
     """
@@ -156,6 +156,8 @@ def save_articles_to_json(
     # Save articles to JSON file using existing logic
     news_dir = "src/sentiment_analysis/news"
     filename = make_timestamped_filename(output_name="news")
+    if filename is None:
+        raise ValueError("Failed to generate filename")
     filepath = os.path.join(news_dir, filename)
 
     save_json_data(articles, filepath)
@@ -174,18 +176,18 @@ def main() -> None:
     config = get_config()
 
     articles = fetch_news_rss(
-        query=config["query"],
-        count=config["article_count"],
-        searxng_url=config["searxng_url"],
-        no_content=config["no_content"],
-        request_delay=config["request_delay"],
-        use_smart_search=config["use_smart_search"]
+        query=str(config["query"]),
+        count=cast(int, config["article_count"]),
+        searxng_url=str(config["searxng_url"]),
+        no_content=bool(config["no_content"]),
+        request_delay=cast(int, config["request_delay"]),
+        use_smart_search=bool(config["use_smart_search"])
     )
 
     if not articles:
         sys.exit(1)
 
-    save_articles_to_json(articles, config["no_content"])
+    save_articles_to_json(articles, bool(config["no_content"]))
 
 
 # Define the public API for this module

@@ -9,7 +9,7 @@ analyzing sentiment, and saving results to the PostgreSQL database.
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 import psycopg
 from instructor import Instructor
@@ -120,7 +120,7 @@ def make_embedding_text(article: dict[str, Any]) -> str:
     truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
     return truncated_text
 
-def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int | None = 32) -> list[dict[str, Any]]:
+def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int = 32) -> list[dict[str, Any]]:
     """
     Generate embeddings for a batch of analyzed articles using batch processing.
 
@@ -288,8 +288,8 @@ def get_analysis_results(
     sentiment_result = analyze_article(
         title, body, client,
         nearest_similar_articles=nearest_similar_articles,
-        use_reasoning=use_reasoning,
-        temperature=temperature
+        use_reasoning=cast(bool, use_reasoning),
+        temperature=cast(float, temperature)
     )
     sentiment_data = sentiment_result.model_dump()
 
@@ -433,7 +433,7 @@ def save_articles_to_db(articles: list[dict[str, Any]]) -> int:
     return processed_articles
 
 
-def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True, use_similarity_scoring: bool = True, use_smart_search: bool = False, use_reasoning: bool = True, temperature: float = 0.1) -> None:
+def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True, use_similarity_scoring: bool = True, use_smart_search: bool = False, use_reasoning: bool | None = True, temperature: float | None = 0.1) -> None:
     """
     Run the complete sentiment analysis pipeline.
 
@@ -513,11 +513,11 @@ if __name__ == "__main__":
     config = get_config()
 
     run_pipeline(
-        config["query"],
-        config["article_count"],
-        config["no_content"],
-        config["use_similarity_scoring"],
-        config["use_smart_search"],
-        config["use_reasoning"],
-        config["temperature"]
+        str(config["query"]),
+        cast(int, config["article_count"]),
+        bool(config["no_content"]),
+        bool(config["use_similarity_scoring"]),
+        bool(config["use_smart_search"]),
+        bool(config["use_reasoning"]),
+        cast(float, config["temperature"])
     )

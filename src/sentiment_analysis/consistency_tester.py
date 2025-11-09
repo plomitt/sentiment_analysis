@@ -13,7 +13,7 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -84,7 +84,7 @@ def load_test_news_file(filepath: str) -> list[dict[str, Any]]:
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            articles = json.load(f)
+            articles = cast(list[dict[str, Any]], json.load(f))
 
         logger.info(f"Loaded {len(articles)} test articles from {filepath}")
         return articles
@@ -343,7 +343,7 @@ def create_consistency_dataset(
         f"Starting consistency dataset creation: {n_articles} articles, max {max_iterations} iterations, {delay_seconds}s delay"
     )
 
-    collected_articles = []
+    collected_articles: list[dict[str, Any]] = []
     collected_urls = set()  # Track URLs to avoid cross-iteration duplicates
 
     for iteration in range(max_iterations):
@@ -491,7 +491,7 @@ def load_test_scores_file(filepath: str) -> list[dict[str, Any]]:
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            articles = json.load(f)
+            articles = cast(list[dict[str, Any]], json.load(f))
 
         logger.info(f"Loaded test scores for {len(articles)} articles from {filepath}")
         return articles
@@ -505,8 +505,8 @@ def load_test_scores_file(filepath: str) -> list[dict[str, Any]]:
 def run_pipeline_copy(
     articles: list[dict[str, Any]],
     similarity_mode: bool = False,
-    use_reasoning: bool = None,
-    temperature: float = None,
+    use_reasoning: bool | None = None,
+    temperature: float | None = None,
 ) -> list[dict[str, Any]]:
     """Run sentiment analysis pipeline and return results without saving to DB.
 
@@ -566,8 +566,8 @@ def run_consistency_test(
     n_runs: int = 10,
     similarity_mode: bool = False,
     consistency_dir: str = "consistency",
-    use_reasoning: bool = None,
-    temperature: float = None
+    use_reasoning: bool | None = None,
+    temperature: float | None = None
 ) -> str | None:
     """Run consistency test on articles across multiple runs.
 
@@ -741,7 +741,7 @@ def create_consistency_visualizations(
     Returns:
         List of paths to generated plot files
     """
-    plot_files = []
+    plot_files: list[str] = []
 
     try:
         # Extract consistency metrics for all articles
@@ -1076,7 +1076,7 @@ def run_full_consistency_test(
         f"Parameters: {n_articles} articles, {n_runs} runs, similarity_mode={similarity_mode}, force_recreate={force_recreate}"
     )
 
-    results = {
+    results: dict[str, str | None] = {
         "test_news_file": None,
         "test_scores_file": None,
         "analysis_report": None,
@@ -1089,7 +1089,7 @@ def run_full_consistency_test(
         if not force_recreate:
             logger.info("Step 1: Looking for existing test dataset")
             base_path = Path(__file__).parent / consistency_dir
-            existing_file = find_latest_file(base_path, "test_news", "json")
+            existing_file = find_latest_file(str(base_path), "test_news", "json")
 
             if existing_file:
                 test_news_file = existing_file
@@ -1167,7 +1167,7 @@ def run_full_consistency_test(
 
 
 # Interactive CLI Helper Functions
-def get_user_choice(prompt: str, valid_choices: list[str]) -> str:
+def get_user_choice(prompt: str, valid_choices: list[str]) -> str | None:
     """Get user choice from a list of valid options.
 
     Args:
@@ -1188,7 +1188,7 @@ def get_user_choice(prompt: str, valid_choices: list[str]) -> str:
             return None
 
 
-def get_numeric_input(prompt: str, default: int, min_val: int = 1, datatype: str = "int") -> int:
+def get_numeric_input(prompt: str, default: int | float, min_val: int = 1, datatype: str = "int") -> int | float | None:
     """Get numeric input from user with validation.
 
     Args:
@@ -1216,7 +1216,7 @@ def get_numeric_input(prompt: str, default: int, min_val: int = 1, datatype: str
             return None
 
 
-def get_boolean_input(prompt: str, default: bool) -> bool:
+def get_boolean_input(prompt: str, default: bool) -> bool | None:
     """Get boolean input from user.
 
     Args:
@@ -1243,7 +1243,7 @@ def get_boolean_input(prompt: str, default: bool) -> bool:
             return None
 
 
-def get_string_input(prompt: str, default: str) -> str:
+def get_string_input(prompt: str, default: str) -> str | None:
     """Get string input from user.
 
     Args:
@@ -1347,9 +1347,9 @@ def handle_dataset_creation() -> None:
 
     print(f"\nCreating consistency dataset with your parameters...")
     result = create_consistency_dataset(
-        n_articles=n_articles,
-        max_iterations=max_iterations,
-        delay_seconds=delay_seconds,
+        n_articles=int(n_articles),
+        max_iterations=int(max_iterations),
+        delay_seconds=int(delay_seconds),
         consistency_dir=consistency_dir,
         use_smart_search=use_smart_search
     )
@@ -1368,7 +1368,7 @@ def handle_patch_process() -> None:
     # First, find the latest test news file
     print("\nLooking for latest test news file...")
     base_path = Path(__file__).parent / "consistency"
-    latest_file = find_latest_file(base_path, "test_news", "json")
+    latest_file = find_latest_file(str(base_path), "test_news", "json")
 
     if not latest_file:
         print("❌ No test news file found. Please create a dataset first.")
@@ -1390,7 +1390,7 @@ def handle_patch_process() -> None:
 
     print("\nEnter patch parameters (press Enter for defaults):")
 
-    searxng_url = get_string_input("SearXNG URL (default: None): ", "")
+    searxng_url: str | None = get_string_input("SearXNG URL (default: None): ", "")
     searxng_url = searxng_url if searxng_url else None
 
     skip_existing = get_boolean_input(
@@ -1490,10 +1490,10 @@ def handle_full_consistency_test() -> None:
 
     print(f"\nRunning full consistency test with your parameters...")
     result = run_full_consistency_test(
-        n_articles=n_articles,
-        n_runs=n_runs,
-        max_iterations=max_iterations,
-        delay_seconds=delay_seconds,
+        n_articles=int(n_articles),
+        n_runs=int(n_runs),
+        max_iterations=int(max_iterations),
+        delay_seconds=int(delay_seconds),
         similarity_mode=similarity_mode,
         force_recreate=force_recreate,
         consistency_dir=consistency_dir,

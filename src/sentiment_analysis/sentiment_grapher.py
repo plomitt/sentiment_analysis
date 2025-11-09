@@ -317,7 +317,7 @@ def create_sentiment_chart(
     df: pd.DataFrame,
     chart_num: int = 1,
     total_charts: int = 1,
-    title: str = None,
+    title: str | None = None,
     dpi: int = 300,
 ) -> str:
     """Create a high-quality sentiment chart and return as base64 string."""
@@ -473,7 +473,7 @@ def create_sentiment_chart(
 def create_charts(
     df: pd.DataFrame,
     max_points: int = 400,
-    title: str = None,
+    title: str | None = None,
     dpi: int = 300,
 ) -> list:
     """Create multiple charts for large datasets and return as base64 list."""
@@ -568,6 +568,10 @@ def generate_sentiment_charts(
 def save_results_to_files(args: argparse.Namespace, images: list[str], input_file: str) -> None:
     timestamped_filename = make_timestamped_filename(input_file, "sentiments", "chart", "png")
 
+    if timestamped_filename is None:
+        logger.error("Failed to generate timestamped filename for charts")
+        return
+
     # Save images to files
     ensure_directory(args.output_dir)
 
@@ -603,7 +607,15 @@ def main() -> None:
     args = parse_args()
     interval_minutes = parse_interval_minutes(args.interval_minutes)
 
+    if interval_minutes is None:
+        logger.error("Invalid interval_minutes value")
+        return
+
     input_file = determine_input_file(args.input_file, args.input_dir)
+
+    if input_file is None:
+        logger.error("Failed to determine input file")
+        return
 
     # Load and process data
     logger.info("Loading sentiment data...")
@@ -618,6 +630,10 @@ def main() -> None:
         dpi=args.dpi,
         max_points=args.max_points,
     )
+
+    if images is None:
+        logger.error("Failed to generate charts")
+        return
 
     save_results_to_files(args, images, input_file)
 

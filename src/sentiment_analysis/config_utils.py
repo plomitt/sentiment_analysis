@@ -14,6 +14,7 @@ import datetime
 from pathlib import Path
 from pprint import pprint
 import tomllib
+from typing import cast
 
 from sentiment_analysis.utils import setup_logging
 
@@ -104,9 +105,9 @@ def get_config() -> dict[str, str | int | float | bool | None | datetime.datetim
         logger.warning("No config file found, using defaults")
     
     # Merge: config file > CLI > defaults
-    final_config = {}
+    final_config: dict[str, str | int | float | bool | None | datetime.datetime] = {}
     for key, default_val in DEFAULTS.items():
-        final_config[key] = default_val
+        final_config[key] = cast(str | int | float | bool | None | datetime.datetime, default_val)
         if file_config.get(key) is not None:
             final_config[key] = file_config[key]
         if cli_args.get(key) is not None:

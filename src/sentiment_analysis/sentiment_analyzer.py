@@ -9,7 +9,7 @@ sentiment scores with trading-focused reasoning.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
@@ -102,7 +102,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         List of article dictionaries.
     """
     try:
-        articles = load_json_data(file_path)
+        articles = cast(list[dict[str, Any]], load_json_data(file_path))
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -174,7 +174,7 @@ def analyze_article(
         return SentimentAnalysisWithReasoning(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
-def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool | None = None, temperature: float | None = None) -> list[dict[str, Any]]:
+def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool = True, temperature: float = 0.1) -> list[dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
@@ -294,8 +294,15 @@ def main() -> None:
     if not articles:
         logger.error("No articles loaded for analysis")
         return
+    
+    use_reasoning = cast(bool, config["use_reasoning"])
+    temperature = cast(float, config["temperature"])
 
-    articles_with_sentiment = analyze_articles_batch(articles, use_reasoning=config["use_reasoning"], temperature=config["temperature"])
+    articles_with_sentiment = analyze_articles_batch(
+        articles,
+        use_reasoning=use_reasoning,
+        temperature=temperature
+    )
 
     # Save the results
     output_filename = make_timestamped_filename(
@@ -304,6 +311,11 @@ def main() -> None:
         output_name="sentiments",
         output_filetype="json",
     )
+
+    if output_filename is None:
+        logger.error("Failed to generate output filename")
+        return
+
     output_file = os.path.join(sentiments_dir, output_filename)
     save_json_data(articles_with_sentiment, output_file)
     logger.info(f"Analysis results saved to {output_file}")

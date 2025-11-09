@@ -7,6 +7,7 @@ with configurable intervals, end conditions, and comprehensive error handling.
 """
 
 from datetime import datetime, timedelta
+from typing import cast
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -45,9 +46,9 @@ def job_wrapper(
     max_cycles: int | None,
     max_duration_minutes: int | None,
     use_smart_search: bool = False,
-    use_reasoning: bool = None,
+    use_reasoning: bool | None = None,
     temperature: float | None = None
-):
+) -> None:
     """
     Execute a single pipeline run and check end conditions.
 
@@ -76,7 +77,14 @@ def job_wrapper(
     cycle_counter[0] += 1
     logger.info(f"Starting pipeline run #{cycle_counter[0]}")
     try:
-        run_pipeline(query=query, article_count=article_count, no_content=no_content, use_smart_search=use_smart_search, use_reasoning=use_reasoning, temperature=temperature)
+        run_pipeline(
+            query=query,
+            article_count=article_count,
+            no_content=no_content,
+            use_smart_search=use_smart_search,
+            use_reasoning=use_reasoning,
+            temperature=temperature
+        )
         logger.info(f"Pipeline run #{cycle_counter[0]} completed")
     except Exception as e:
         logger.error(f"Pipeline run #{cycle_counter[0]} failed: {e}")
@@ -104,9 +112,9 @@ def main(
     max_cycles: int | None,
     max_duration_minutes: int | None,
     use_smart_search: bool = False,
-    use_reasoning: bool = None,
+    use_reasoning: bool | None = None,
     temperature: float | None = None
-):
+) -> None:
     """
     Run the sentiment analysis pipeline on a scheduled interval with end conditions.
 
@@ -190,15 +198,15 @@ if __name__ == "__main__":
     config = get_config()
 
     main(
-        minute_interval=config["interval_min"],
-        query=config["query"],
-        article_count=config["article_count"],
-        no_content=config["no_content"],
-        start_datetime=config["start_datetime"],
-        end_datetime=config["end_datetime"],
-        max_cycles=config["max_cycles"],
-        max_duration_minutes=config["max_duration_minutes"],
-        use_smart_search=config["use_smart_search"],
-        use_reasoning=config["use_reasoning"],
-        temperature=config["temperature"]
+        minute_interval=cast(int, config["interval_min"]),
+        query=str(config["query"]),
+        article_count=cast(int, config["article_count"]),
+        no_content=bool(config["no_content"]),
+        start_datetime=cast(datetime, config["start_datetime"]),
+        end_datetime=cast(datetime, config["end_datetime"]),
+        max_cycles=cast(int, config["max_cycles"]),
+        max_duration_minutes=cast(int, config["max_duration_minutes"]),
+        use_smart_search=bool(config["use_smart_search"]),
+        use_reasoning=bool(config["use_reasoning"]),
+        temperature=cast(float, config["temperature"])
     )

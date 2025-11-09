@@ -12,7 +12,7 @@ import asyncio
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 from dotenv import load_dotenv
@@ -76,11 +76,12 @@ async def fetch_search_results(
             )
 
         data = await response.json()
-        results = data.get("results", [])
+        results = cast(list, data.get("results", []))
 
         # Add the query to each result
         for result in results:
-            result["query"] = query
+            if isinstance(result, dict):
+                result["query"] = query
 
         return results
 
@@ -208,6 +209,7 @@ def searxng_search(
     """
     load_dotenv()
     final_base_url = base_url or os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
+    final_base_url = cast(str, final_base_url)
 
     with ThreadPoolExecutor() as executor:
         return executor.submit(
