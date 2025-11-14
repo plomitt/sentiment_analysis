@@ -295,34 +295,65 @@ def convert_google_rss_to_unix(rss_parsed: time.struct_time) -> int:
     return calendar.timegm(rss_parsed)
 
 
-def convert_alpaca_to_iso(alpaca_string: str) -> str:
+def convert_alpaca_to_iso(alpaca_input: str | datetime) -> str:
     """
     Convert Alpaca news timestamp to ISO 8601 UTC format.
 
     Args:
-        alpaca_string: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z")
+        alpaca_input: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z" or "2025-11-14T19:15:49+00:00")
+        or datetime object
 
     Returns:
         ISO 8601 UTC string (e.g., "2025-11-13T16:01:45Z")
     """
-    # Alpaca format is already ISO 8601, just parse and reformat to ensure consistency
-    dt = datetime.strptime(alpaca_string, "%Y-%m-%dT%H:%M:%SZ")
-    dt = dt.replace(tzinfo=timezone.utc)
+    if isinstance(alpaca_input, datetime):
+        dt = alpaca_input
+    else:
+        # Parse string input
+        try:
+            # Try parsing with Z suffix first
+            dt = datetime.strptime(alpaca_input, "%Y-%m-%dT%H:%M:%SZ")
+            dt = dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            # Try parsing with timezone offset
+            dt = datetime.fromisoformat(alpaca_input)
+
+    # Convert to UTC if needed
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    else:
+        dt = dt.replace(tzinfo=timezone.utc)
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def convert_alpaca_to_unix(alpaca_string: str) -> int:
+def convert_alpaca_to_unix(alpaca_input: str | datetime) -> int:
     """
     Convert Alpaca news timestamp to Unix epoch time.
 
     Args:
-        alpaca_string: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z")
+        alpaca_input: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z" or "2025-11-14T19:15:49+00:00") 
+        or datetime object
 
     Returns:
         Unix epoch timestamp (seconds since 1970-01-01)
     """
-    dt = datetime.strptime(alpaca_string, "%Y-%m-%dT%H:%M:%SZ")
-    dt = dt.replace(tzinfo=timezone.utc)
+    if isinstance(alpaca_input, datetime):
+        dt = alpaca_input
+    else:
+        # Parse string input
+        try:
+            # Try parsing with Z suffix first
+            dt = datetime.strptime(alpaca_input, "%Y-%m-%dT%H:%M:%SZ")
+            dt = dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            # Try parsing with timezone offset
+            dt = datetime.fromisoformat(alpaca_input)
+
+    # Convert to UTC if needed
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    else:
+        dt = dt.replace(tzinfo=timezone.utc)
     return int(dt.timestamp())
 
 

@@ -224,3 +224,6 @@ src/sentiment_analysis/config.toml
 
 # macOS
 .DS_Store
+
+# Telegram
+*.session

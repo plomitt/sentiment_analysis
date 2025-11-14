@@ -161,7 +161,7 @@ async def process_realtime_alpaca_news():
                             article = {
                                 "title": news["headline"],
                                 "body": clean_up_body_text(news["content"]),
-                                "source": news["author"],
+                                "source": f"Alpaca News ({news['author']})",
                                 "url": news["url"],
                                 "timestamp": convert_alpaca_to_iso(news["created_at"]),
                                 "unix_timestamp": convert_alpaca_to_unix(news["created_at"]),
@@ -227,6 +227,12 @@ def main():
     elif choice == "exit":
         print("Exiting...")
         exit(0)
+
+
+__all__ = [
+    "process_realtime_alpaca_news",
+    "unsubscribe_from_alpaca_news"
+]
 
 
 if __name__ == "__main__":

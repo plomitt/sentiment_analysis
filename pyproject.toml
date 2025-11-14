@@ -26,6 +26,7 @@ dependencies = [
     "apscheduler (>=3.11.1,<4.0.0)",
     "websockets (>=15.0.1,<16.0.0)",
     "beautifulsoup4 (>=4.14.2,<5.0.0)",
+    "telethon (>=1.42.0,<2.0.0)",
 ]
 
 [project.optional-dependencies]

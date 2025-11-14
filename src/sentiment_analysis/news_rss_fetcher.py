@@ -107,7 +107,7 @@ def fetch_news_rss(
             article = {
                 "title": entry.title,
                 "body": "",
-                "source": entry.source.title,
+                "source": f"Google News ({entry.source.title})",
                 "url": entry.link,
                 "timestamp": convert_google_rss_to_iso(entry.published_parsed),
                 "unix_timestamp": convert_google_rss_to_unix(entry.published_parsed),
