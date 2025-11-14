@@ -14,7 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.pipeline import run_pipeline
-from sentiment_analysis.utils import setup_logging
+from sentiment_analysis.logging_utils import setup_logging
 
 logger = setup_logging(__name__)
 

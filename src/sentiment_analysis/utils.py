@@ -10,37 +10,20 @@ from __future__ import annotations
 
 import glob
 import json
-import logging
 import os
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Any
+import calendar
+import time
+from datetime import datetime, timezone
 
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-
-def setup_logging(name: str | None = None, level: int = logging.INFO, format_string: str | None = None) -> logging.Logger:
-    """
-    Standardized logging setup with optional custom format.
-
-    Args:
-        name: Logger name (defaults to __name__ of calling module).
-        level: Logging level (defaults to INFO).
-        format_string: Custom format string (defaults to standard format).
-
-    Returns:
-        Configured logger instance.
-    """
-    if format_string is None:
-        format_string = "%(asctime)s - %(levelname)s - %(message)s"
-
-    # Only configure basic logging if not already configured
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=level, format=format_string)
-
-    logger_name = name if name else __name__
-    return logging.getLogger(logger_name)
-
+from sentiment_analysis.embedding_model import truncate_text_to_model_limit
+from sentiment_analysis.logging_utils import setup_logging
 
 logger = setup_logging(__name__)
 
@@ -285,6 +268,110 @@ def validate_env_config(required_vars: list[str]) -> bool:
     return True
 
 
+def convert_google_rss_to_iso(rss_parsed: time.struct_time) -> str:
+    """
+    Convert Google RSS timestamp to ISO 8601 UTC format.
+
+    Args:
+        rss_parsed: Parsed time.struct_time from feedparser
+
+    Returns:
+        ISO 8601 UTC string (e.g., "2025-11-11T19:15:21Z")
+    """
+    dt = datetime(*rss_parsed[:6], tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def convert_google_rss_to_unix(rss_parsed: time.struct_time) -> int:
+    """
+    Convert Google RSS timestamp to Unix epoch time.
+
+    Args:
+        rss_parsed: Parsed time.struct_time from feedparser
+
+    Returns:
+        Unix epoch timestamp (seconds since 1970-01-01)
+    """
+    return calendar.timegm(rss_parsed)
+
+
+def convert_alpaca_to_iso(alpaca_string: str) -> str:
+    """
+    Convert Alpaca news timestamp to ISO 8601 UTC format.
+
+    Args:
+        alpaca_string: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z")
+
+    Returns:
+        ISO 8601 UTC string (e.g., "2025-11-13T16:01:45Z")
+    """
+    # Alpaca format is already ISO 8601, just parse and reformat to ensure consistency
+    dt = datetime.strptime(alpaca_string, "%Y-%m-%dT%H:%M:%SZ")
+    dt = dt.replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def convert_alpaca_to_unix(alpaca_string: str) -> int:
+    """
+    Convert Alpaca news timestamp to Unix epoch time.
+
+    Args:
+        alpaca_string: Alpaca timestamp string (e.g., "2025-11-13T16:01:45Z")
+
+    Returns:
+        Unix epoch timestamp (seconds since 1970-01-01)
+    """
+    dt = datetime.strptime(alpaca_string, "%Y-%m-%dT%H:%M:%SZ")
+    dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp())
+
+
+def clean_up_body_text(text: str) -> str:
+    """
+    Clean up article body text by removing HTML tags and unwanted elements.
+
+    Args:
+        text: Raw article body text.
+
+    Returns:
+        str: Cleaned article body text.
+    """
+    # Step 1: Parse HTML
+    soup = BeautifulSoup(text, 'html.parser')
+
+    # Step 2: Remove unwanted elements
+    for tag in soup(['script', 'style', 'table', 'img', 'a']):
+        tag.decompose()
+
+    # Step 3: Extract text
+    clean_text = soup.get_text(separator=' ', strip=True)
+
+    # Step 4: Clean up whitespace and artifacts
+    clean_text = re.sub(r'\s+', ' ', clean_text)
+
+    return clean_text
+
+
+def make_embedding_text(article: dict[str, Any]) -> str:
+    """
+    Create embedding text from article title and body.
+
+    Combines title and body text, truncating to fit within the model's maximum token limit
+    to create suitable input for text embedding models.
+
+    Args:
+        article: Article dictionary containing title and body keys.
+
+    Returns:
+        str: Combined text from title and body, truncated to 1000 characters.
+    """
+    title = article.get("title", "")
+    body = article.get("body", "")
+    text = f"{title} {body}"
+    truncated_text = truncate_text_to_model_limit(text)
+    return truncated_text
+
+
 # Define the public API for this module
 __all__ = [
     "ensure_directory",
@@ -295,4 +382,10 @@ __all__ = [
     "save_json_data",
     "setup_logging",
     "validate_env_config",
+    "convert_google_rss_to_iso",
+    "convert_google_rss_to_unix",
+    "convert_alpaca_to_iso",
+    "convert_alpaca_to_unix",
+    "clean_up_body_text",
+    "make_embedding_text",
 ]

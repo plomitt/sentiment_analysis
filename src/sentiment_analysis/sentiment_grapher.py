@@ -21,12 +21,12 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.utils import (
     ensure_directory,
     find_latest_file,
     load_json_data,
     make_timestamped_filename,
-    setup_logging,
 )
 
 # Configure logging

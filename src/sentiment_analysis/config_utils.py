@@ -16,7 +16,7 @@ from pprint import pprint
 import tomllib
 from typing import cast
 
-from sentiment_analysis.utils import setup_logging
+from sentiment_analysis.logging_utils import setup_logging
 
 logger = setup_logging(__name__)
 

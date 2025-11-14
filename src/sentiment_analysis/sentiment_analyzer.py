@@ -14,6 +14,7 @@ from typing import Any, cast
 from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
 
+from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.client_manager import build_client
 from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
@@ -22,7 +23,6 @@ from sentiment_analysis.utils import (
     load_json_data,
     make_timestamped_filename,
     save_json_data,
-    setup_logging,
 )
 
 # Configure logging

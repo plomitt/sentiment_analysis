@@ -10,7 +10,6 @@ article saving functionality for the sentiment analysis system.
 from __future__ import annotations
 
 import os
-import logging
 from typing import Any
 from decimal import Decimal, InvalidOperation
 
@@ -18,7 +17,8 @@ import psycopg
 from psycopg import OperationalError
 from dotenv import load_dotenv
 
-from sentiment_analysis.utils import validate_env_config, setup_logging
+from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.utils import validate_env_config
 
 logger = setup_logging(__name__)
 

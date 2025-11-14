@@ -14,15 +14,17 @@ from typing import Any, cast
 import psycopg
 from instructor import Instructor
 from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
 
 from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
+from sentiment_analysis.embedding_model import EMBEDDING_MODEL
 from sentiment_analysis.news_rss_fetcher import fetch_news_rss
 from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
-from sentiment_analysis.utils import setup_logging
+from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.utils import make_embedding_text
 
 logger = setup_logging(__name__)
+
 
 def get_existing_article_urls() -> set[str]:
     """
@@ -101,25 +103,6 @@ def filter_duplicate_articles(articles: list[dict[str, Any]]) -> list[dict[str, 
         return articles
 
 
-def make_embedding_text(article: dict[str, Any]) -> str:
-    """
-    Create embedding text from article title and body.
-
-    Combines title and body text, truncating to 1000 characters if needed
-    to create suitable input for text embedding models.
-
-    Args:
-        article: Article dictionary containing title and body keys.
-
-    Returns:
-        str: Combined text from title and body, truncated to 1000 characters.
-    """
-    title = article.get("title", "")
-    body = article.get("body", "")
-    text = f"{title} {body}"
-    truncated_text = f"{text[:1000]}" if len(text) > 1000 else text
-    return truncated_text
-
 def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int = 32) -> list[dict[str, Any]]:
     """
     Generate embeddings for a batch of analyzed articles using batch processing.
@@ -143,10 +126,6 @@ def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int = 32) 
     logger.info(f"Generating embeddings for {len(articles)} articles with batch size {batch_size}")
 
     try:
-        # Initialize model once for the entire batch
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        logger.debug("SentenceTransformer model initialized successfully")
-
         embedded_articles = []
 
         # Process articles in batches to manage memory efficiently
@@ -158,7 +137,7 @@ def get_embedded_articles(articles: list[dict[str, Any]], batch_size: int = 32) 
             batch_texts = [make_embedding_text(article) for article in batch]
 
             # Generate embeddings for the entire batch at once
-            batch_embeddings = model.encode(batch_texts, batch_size=len(batch))
+            batch_embeddings = EMBEDDING_MODEL.encode(batch_texts, batch_size=len(batch))
 
             # Create embedded articles by adding embeddings to original articles
             for article, embedding in zip(batch, batch_embeddings):
@@ -433,7 +412,7 @@ def save_articles_to_db(articles: list[dict[str, Any]]) -> int:
     return processed_articles
 
 
-def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True, use_similarity_scoring: bool = True, use_smart_search: bool = False, use_reasoning: bool | None = True, temperature: float | None = 0.1) -> None:
+def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True, use_similarity_scoring: bool = True, use_smart_search: bool = False, use_reasoning: bool | None = True, temperature: float | None = 0.1, news_articles: list[dict[str, Any]] | None = None) -> None:
     """
     Run the complete sentiment analysis pipeline.
 
@@ -448,15 +427,20 @@ def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bo
         use_smart_search: Use smart search if True for body content fetching (default: False).
         use_reasoning: Whether to use reasoning in sentiment analysis (default: True).
         temperature: Temperature for AI model (default: 0.1).
+        news_articles: Optional list of article dictionaries to use instead of fetching from RSS (default: None).
     """
     try:
         logger.info("Starting pipeline")
         pipeline_start_time = time.perf_counter()
 
         # Fetch news articles
-        fetched_articles = fetch_news_rss(query=query, count=article_count, no_content=no_content, use_smart_search=use_smart_search)
+        if news_articles:
+            fetched_articles = news_articles
+            logger.info(f"Using provided {len(fetched_articles)} articles for pipeline")
+        else:
+            fetched_articles = fetch_news_rss(query=query, count=article_count, no_content=no_content, use_smart_search=use_smart_search)
         if not fetched_articles:
-            logger.warning("No articles fetched from RSS feed")
+            logger.warning("No articles fetched from RSS feed or provided")
             return
 
         # Filter out duplicates

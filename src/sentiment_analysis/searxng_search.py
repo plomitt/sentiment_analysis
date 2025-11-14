@@ -17,7 +17,7 @@ from typing import Any, cast
 import aiohttp
 from dotenv import load_dotenv
 
-from sentiment_analysis.utils import setup_logging
+from sentiment_analysis.logging_utils import setup_logging
 
 # Configure logging
 logger = setup_logging(__name__)

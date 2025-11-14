@@ -8,7 +8,6 @@ fetches article content using SearXNG search engine.
 
 from __future__ import annotations
 
-import calendar
 import os
 import sys
 import time
@@ -16,12 +15,15 @@ from typing import Any, cast
 
 import feedparser
 
+from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.searxng_search import searxng_search, smart_searxng_search
 from sentiment_analysis.utils import (
+    clean_up_body_text,
+    convert_google_rss_to_iso,
+    convert_google_rss_to_unix,
     make_timestamped_filename,
     save_json_data,
-    setup_logging,
 )
 
 # Set up logging
@@ -107,8 +109,8 @@ def fetch_news_rss(
                 "body": "",
                 "source": entry.source.title,
                 "url": entry.link,
-                "timestamp": entry.published,
-                "unix_timestamp": calendar.timegm(entry.published_parsed),
+                "timestamp": convert_google_rss_to_iso(entry.published_parsed),
+                "unix_timestamp": convert_google_rss_to_unix(entry.published_parsed),
             }
 
             # Fetch article content using SearXNG if not disabled
@@ -116,7 +118,7 @@ def fetch_news_rss(
                 try:
                     article_body = fetch_article_body_content(title=entry.title, searxng_url=searxng_url, use_smart_search=use_smart_search)
                     if article_body is not None:
-                        article["body"] = article_body
+                        article["body"] = clean_up_body_text(article_body)
 
                     # Add delay between requests to be respectful
                     if (i < len(feed.entries[:count]) - 1):  # Don't delay after the last article
