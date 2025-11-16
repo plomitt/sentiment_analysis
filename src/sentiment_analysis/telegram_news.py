@@ -80,9 +80,29 @@ def process_realtime_telegram_news():
     with client:
         client.loop.run_until_complete(telegram_listen())
 
+async def async_telegram_monitor():
+    """
+    Async version of Telegram monitor that works with asyncio event loops.
+    This function is compatible with the parallel processor's async execution.
+    """
+    try:
+        logger.info("Starting async Telegram monitor...")
+        await client.start()
+        try:
+            await telegram_listen()
+        finally:
+            await client.disconnect()
+    except Exception as e:
+        logger.error(f"Async Telegram monitor error: {e}", exc_info=True)
+        try:
+            await client.disconnect()
+        except:
+            pass
+
 
 __all__ = [
-    "process_realtime_telegram_news"
+    "process_realtime_telegram_news",
+    "async_telegram_monitor"
 ]
 
 
