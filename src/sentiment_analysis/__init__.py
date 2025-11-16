@@ -10,19 +10,13 @@ __email__ = "46419727+plomitt@users.noreply.github.com"
 
 # Core pipeline and workflow
 # Client management
-from sentiment_analysis.client_manager import (
-    build_client,
-    build_lmstudio_client,
-    build_openrouter_client,
-)
+from sentiment_analysis.client_manager import build_client
 from sentiment_analysis.config_utils import get_config
 
 # Data fetching and processing
-from sentiment_analysis.google_news import (
-    fetch_article_body_content,
-    fetch_news_rss,
-    save_articles_to_json,
-)
+from sentiment_analysis.google_news import fetch_news_rss, process_google_news
+from sentiment_analysis.telegram_news import process_realtime_telegram_news
+from sentiment_analysis.alpaca_news import process_realtime_alpaca_news
 from sentiment_analysis.pipeline import run_pipeline
 
 # Prompts
@@ -38,8 +32,14 @@ from sentiment_analysis.searxng_search import (
 from sentiment_analysis.sentiment_analyzer import (
     ArticleWithSentiment,
     SentimentAnalysis,
-    analyze_article,
-    analyze_articles_batch,
+    SentimentAnalysisWithReasoning,
+    analyze_article
+)
+
+# Multi-source processing
+from sentiment_analysis.parallel_processor import (
+    ParallelProcessor,
+    run_parallel_processor
 )
 
 # Visualization
@@ -66,8 +66,6 @@ __all__ = [
 
     # Data operations
     "fetch_news_rss",
-    "fetch_article_body_content",
-    "save_articles_to_json",
     "load_json_data",
     "save_json_data",
     "find_latest_file",
@@ -75,9 +73,16 @@ __all__ = [
 
     # Analysis
     "SentimentAnalysis",
+    "SentimentAnalysisWithReasoning",
     "ArticleWithSentiment",
     "analyze_article",
-    "analyze_articles_batch",
+
+    # Multi-source processing
+    "process_google_news",
+    "process_realtime_telegram_news",
+    "process_realtime_alpaca_news",
+    "ParallelProcessor",
+    "run_parallel_processor",
 
     # Search
     "searxng_search",
@@ -85,8 +90,6 @@ __all__ = [
 
     # Clients
     "build_client",
-    "build_lmstudio_client",
-    "build_openrouter_client",
 
     # Utilities
     "setup_logging",
