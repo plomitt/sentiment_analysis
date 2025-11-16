@@ -2,12 +2,17 @@ import asyncio
 import json
 import os
 from typing import Any
+
 import websockets
 from dotenv import load_dotenv
 
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
-from sentiment_analysis.utils import clean_up_body_text, convert_alpaca_to_iso, convert_alpaca_to_unix
+from sentiment_analysis.utils import (
+    clean_up_body_text,
+    convert_alpaca_to_iso,
+    convert_alpaca_to_unix,
+)
 
 logger = setup_logging(__name__)
 
@@ -17,6 +22,17 @@ PING_TIMEOUT = 10
 
 
 async def authenticate(websocket: Any) -> bool | None:
+    """Authenticate with Alpaca websocket API.
+
+    Connects to the Alpaca news websocket and authenticates using API
+    credentials from environment variables.
+
+    Args:
+        websocket: The websocket connection to authenticate.
+
+    Returns:
+        bool | None: True if authentication successful, None if failed.
+    """
     load_dotenv()
 
     api_key = os.getenv("ALPACA_API_KEY")
@@ -24,7 +40,7 @@ async def authenticate(websocket: Any) -> bool | None:
 
     if not (api_key and secret_key):
         logger.error("ALPACA_API_KEY or ALPACA_API_SECRET not found in environment variables")
-        return
+        return None
 
     # Connect
     conn_response = await websocket.recv()
@@ -34,7 +50,7 @@ async def authenticate(websocket: Any) -> bool | None:
         logger.info("Connected to alpaca news websocket successfully")
     else:
         logger.error(f"Connection to alpaca failed: {response_data}")
-        return
+        return None
 
     # Authenticate
     auth_message = {
@@ -49,17 +65,27 @@ async def authenticate(websocket: Any) -> bool | None:
     if response_data[0]["T"] == "success":
         logger.info("Authentication to alpaca successful")
         return True
-    else:
-        logger.error(f"Authentication to alpaca failed: {response_data}")
-        return
+    logger.error(f"Authentication to alpaca failed: {response_data}")
+    return None
 
 
 async def unsubscribe(websocket: Any) -> bool | None:
+    """Unsubscribe from Alpaca news websocket.
+
+    Authenticates with the websocket and unsubscribes from all news
+    data streams.
+
+    Args:
+        websocket: The websocket connection to unsubscribe from.
+
+    Returns:
+        bool | None: True if unsubscription successful, None if failed.
+    """
     # Authenticate
     authenticated = await authenticate(websocket)
     if not authenticated:
         logger.error("Authentication failed, cannot subscribe")
-        return
+        return None
 
     # Unsubscribe
     subscription_message = {
@@ -73,17 +99,27 @@ async def unsubscribe(websocket: Any) -> bool | None:
     if response_data[0]["T"] == "subscription":
         logger.info("Unsubscription from alpaca successful")
         return True
-    else:
-        logger.error(f"Unsubscription from alpaca failed: {response_data}")
-        return
+    logger.error(f"Unsubscription from alpaca failed: {response_data}")
+    return None
 
 
 async def subscribe(websocket: Any) -> bool | None:
+    """Subscribe to Alpaca news websocket.
+
+    Authenticates with the websocket and subscribes to BTCUSD news
+    data streams.
+
+    Args:
+        websocket: The websocket connection to subscribe to.
+
+    Returns:
+        bool | None: True if subscription successful, None if failed.
+    """
     # Authenticate
     authenticated = await authenticate(websocket)
     if not authenticated:
         logger.error("Authentication failed, cannot subscribe")
-        return
+        return None
 
     # Subscribe
     subscription_message = {
@@ -98,12 +134,16 @@ async def subscribe(websocket: Any) -> bool | None:
     if response_data[0]["T"] == "subscription":
         logger.info("Subscription to alpaca successful")
         return True
-    else:
-        logger.error(f"Subscription to alpaca failed: {response_data}")
-        return
-    
+    logger.error(f"Subscription to alpaca failed: {response_data}")
+    return None
+
 
 async def unsubscribe_from_alpaca_news():
+    """Connect to Alpaca websocket and unsubscribe from news streams.
+
+    Establishes a websocket connection to Alpaca and unsubscribes from
+    all news data streams. Used for cleanup purposes.
+    """
     try:
         logger.info("Starting alpaca news websocket for unsubscription")
 
@@ -127,6 +167,11 @@ async def unsubscribe_from_alpaca_news():
 
 
 async def process_realtime_alpaca_news():
+    """Process real-time news from Alpaca websocket.
+
+    Connects to Alpaca news websocket, subscribes to BTCUSD news,
+    and processes incoming news articles through the sentiment analysis pipeline.
+    """
     try:
         logger.info("Starting alpaca news websocket")
 
@@ -167,7 +212,7 @@ async def process_realtime_alpaca_news():
                             run_pipeline([article])
                         else:
                             logger.warning(f"Failed to parse news: {news}")
-                            
+
                     except json.JSONDecodeError:
                         logger.warning(f"Failed to parse message: {message}")
 
@@ -194,15 +239,19 @@ def get_user_choice():
 
         if choice == "1":
             return "process"
-        elif choice == "2":
+        if choice == "2":
             return "unsubscribe"
-        elif choice == "3":
+        if choice == "3":
             return "exit"
-        else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+        print("Invalid choice. Please enter 1, 2, or 3.")
 
 
 def main():
+    """Main entry point for Alpaca news processing.
+
+    Prompts user to choose between processing real-time news,
+    unsubscribing from news streams, or exiting.
+    """
     choice = get_user_choice()
 
     if choice == "process":

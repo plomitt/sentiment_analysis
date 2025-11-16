@@ -1,7 +1,8 @@
-import os
 import asyncio
-from telethon import TelegramClient, events
+import os
+
 from dotenv import load_dotenv
+from telethon import TelegramClient, events
 
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
@@ -13,12 +14,17 @@ load_dotenv()
 
 api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
-client = TelegramClient('session_name', api_id, api_hash)
+client = TelegramClient("session_name", api_id, api_hash)
 
-channels_to_monitor = ['https://t.me/markettwits', 'https://t.me/crypto_hd']
+channels_to_monitor = ["https://t.me/markettwits", "https://t.me/crypto_hd"]
 
 
 async def telegram_listen():
+    """Listen to Telegram channels for new messages.
+
+    Sets up event handlers for specified Telegram channels and processes
+    new messages through the sentiment analysis pipeline.
+    """
     logger.info("Starting listening to Telegram channels...")
 
     # Resolve entities
@@ -29,14 +35,15 @@ async def telegram_listen():
 
     @client.on(events.NewMessage(chats=entities))
     async def handler(event):
+        """Handle new Telegram message events."""
         m = event.message
         try:
             logger.info("New telegram message received, processing...")
 
             # Get message info
             channel = await event.get_chat()
-            channel_name = getattr(channel, 'title', None)
-            user_name = getattr(channel, 'username', None)
+            channel_name = getattr(channel, "title", None)
+            user_name = getattr(channel, "username", None)
             msg_id = m.id
             body = m.text or m.raw_text
             source = f"Telegram ({channel_name or user_name})"
@@ -44,7 +51,7 @@ async def telegram_listen():
 
             # Define article
             article = {
-                "title": '',
+                "title": "",
                 "body": body,
                 "source": source,
                 "url": url,
@@ -54,9 +61,9 @@ async def telegram_listen():
 
             # Process article
             run_pipeline([article])
-            
+
             logger.info(f"New message in {channel_name} (ID: {msg_id}) processed.")
-            
+
         except Exception as e:
             logger.error("Failed to process message:", exc_info=e)
 
@@ -89,5 +96,5 @@ __all__ = [
 ]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(process_realtime_telegram_news())

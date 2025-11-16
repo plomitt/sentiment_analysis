@@ -39,8 +39,8 @@ def truncate_text_to_model_limit(text: str) -> str:
 
 
 __all__ = [
-    "EMBEDDING_MODEL",
     "EMBEDDING_MAX_TOKENS",
+    "EMBEDDING_MODEL",
     "EMBEDDING_TOKENIZER",
     "truncate_text_to_model_limit",
 ]

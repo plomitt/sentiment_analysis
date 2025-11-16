@@ -15,8 +15,8 @@ from typing import Any
 
 import feedparser
 
-from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.config_utils import CONFIG
+from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
 from sentiment_analysis.searxng_search import searxng_search, smart_searxng_search
 from sentiment_analysis.utils import (
@@ -62,12 +62,10 @@ def fetch_article_body_content(title: str) -> str | None:
             if isinstance(content, str):
                 logger.info(f"Successfully fetched content ({len(content)} chars)")
                 return content
-            else:
-                logger.warning(f"No content found in search result for: {title[:50]}")
-                return None
-        else:
-            logger.warning(f"No search results found for: {title[:50]}")
+            logger.warning(f"No content found in search result for: {title[:50]}")
             return None
+        logger.warning(f"No search results found for: {title[:50]}")
+        return None
 
     except Exception as e:
         logger.error(f"Failed to fetch content for '{title[:50]}': {e!s}")
@@ -145,7 +143,7 @@ def save_articles_to_json(articles: list[dict[str, Any]]) -> None:
     Args:
         articles: List of article dictionaries.
     """
-    
+
     news_dir = "src/sentiment_analysis/news"
     filename = make_timestamped_filename(output_name="news")
     if filename is None:
@@ -181,10 +179,10 @@ def main() -> None:
 
 # Define the public API for this module
 __all__ = [
-    "fetch_news_rss",
     "fetch_article_body_content",
-    "save_articles_to_json",
-    "process_google_news"
+    "fetch_news_rss",
+    "process_google_news",
+    "save_articles_to_json"
 ]
 
 

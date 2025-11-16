@@ -8,16 +8,15 @@ timestamp handling, and JSON data management used throughout the application.
 
 from __future__ import annotations
 
+import calendar
 import glob
 import json
 import os
-from datetime import datetime
-from pathlib import Path
 import re
-from typing import Any
-import calendar
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -264,7 +263,7 @@ def validate_env_config(required_vars: list[str]) -> bool:
         logger.error(f"Missing required environment variables: {missing_vars}")
         return False
 
-    logger.info(f"Environment variables configuration validated.")
+    logger.info("Environment variables configuration validated.")
     return True
 
 
@@ -278,7 +277,7 @@ def convert_google_rss_to_iso(rss_parsed: time.struct_time) -> str:
     Returns:
         ISO 8601 UTC string (e.g., "2025-11-11T19:15:21Z")
     """
-    dt = datetime(*rss_parsed[:6], tzinfo=timezone.utc)
+    dt = datetime(*rss_parsed[:6], tzinfo=UTC)
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -313,16 +312,16 @@ def convert_alpaca_to_iso(alpaca_input: str | datetime) -> str:
         try:
             # Try parsing with Z suffix first
             dt = datetime.strptime(alpaca_input, "%Y-%m-%dT%H:%M:%SZ")
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         except ValueError:
             # Try parsing with timezone offset
             dt = datetime.fromisoformat(alpaca_input)
 
     # Convert to UTC if needed
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     else:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -344,16 +343,16 @@ def convert_alpaca_to_unix(alpaca_input: str | datetime) -> int:
         try:
             # Try parsing with Z suffix first
             dt = datetime.strptime(alpaca_input, "%Y-%m-%dT%H:%M:%SZ")
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         except ValueError:
             # Try parsing with timezone offset
             dt = datetime.fromisoformat(alpaca_input)
 
     # Convert to UTC if needed
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     else:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return int(dt.timestamp())
 
 
@@ -368,17 +367,17 @@ def clean_up_body_text(text: str) -> str:
         str: Cleaned article body text.
     """
     # Step 1: Parse HTML
-    soup = BeautifulSoup(text, 'html.parser')
+    soup = BeautifulSoup(text, "html.parser")
 
     # Step 2: Remove unwanted elements
-    for tag in soup(['script', 'style', 'table', 'img', 'a']):
+    for tag in soup(["script", "style", "table", "img", "a"]):
         tag.decompose()
 
     # Step 3: Extract text
-    clean_text = soup.get_text(separator=' ', strip=True)
+    clean_text = soup.get_text(separator=" ", strip=True)
 
     # Step 4: Clean up whitespace and artifacts
-    clean_text = re.sub(r'\s+', ' ', clean_text)
+    clean_text = re.sub(r"\s+", " ", clean_text)
 
     return clean_text
 
@@ -405,18 +404,18 @@ def make_embedding_text(article: dict[str, Any]) -> str:
 
 # Define the public API for this module
 __all__ = [
+    "clean_up_body_text",
+    "convert_alpaca_to_iso",
+    "convert_alpaca_to_unix",
+    "convert_google_rss_to_iso",
+    "convert_google_rss_to_unix",
     "ensure_directory",
     "extract_timestamp_from_filename",
     "find_latest_file",
     "load_json_data",
+    "make_embedding_text",
     "make_timestamped_filename",
     "save_json_data",
     "setup_logging",
     "validate_env_config",
-    "convert_google_rss_to_iso",
-    "convert_google_rss_to_unix",
-    "convert_alpaca_to_iso",
-    "convert_alpaca_to_unix",
-    "clean_up_body_text",
-    "make_embedding_text",
 ]

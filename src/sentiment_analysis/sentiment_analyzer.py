@@ -13,10 +13,13 @@ from typing import Any, cast
 
 from pydantic import BaseModel, Field, field_validator
 
-from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.client_manager import LLM_CLIENT
 from sentiment_analysis.config_utils import CONFIG
-from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
+from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.prompt_manager import (
+    get_sentiment_analysis_prompt_with_context,
+    get_system_prompt,
+)
 from sentiment_analysis.utils import (
     find_latest_file,
     load_json_data,
@@ -50,7 +53,7 @@ class SentimentAnalysis(BaseModel):
 class SentimentAnalysisWithReasoning(SentimentAnalysis):
     """Structured output for sentiment analysis results."""
 
-    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
+    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications")
 
 
 class ArticleWithSentiment(BaseModel):
@@ -101,7 +104,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         List of article dictionaries.
     """
     try:
-        articles = cast(list[dict[str, Any]], load_json_data(file_path))
+        articles = cast("list[dict[str, Any]]", load_json_data(file_path))
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -148,7 +151,7 @@ def analyze_article(title: str, body: str | None, nearest_similar_articles: list
         )
 
         logger.info(f"Analysis complete - Score: {sentiment.score}")
-        result_reasoning = getattr(sentiment, 'reasoning', '')
+        result_reasoning = getattr(sentiment, "reasoning", "")
         return SentimentAnalysisWithReasoning(success=sentiment.success, score=sentiment.score, reasoning=result_reasoning)
 
     except Exception as e:

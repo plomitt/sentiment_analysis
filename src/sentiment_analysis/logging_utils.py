@@ -1,5 +1,6 @@
 import logging
 
+
 def setup_logging(name: str | None = None, level: int = logging.INFO, format_string: str | None = None) -> logging.Logger:
     """
     Standardized logging setup with optional custom format.

@@ -8,15 +8,15 @@ database integrity.
 """
 
 import asyncio
-import threading
 import logging
 import signal
+import threading
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 
+from sentiment_analysis.alpaca_news import process_realtime_alpaca_news
 from sentiment_analysis.google_supervisor import supervise_google_news
 from sentiment_analysis.telegram_news import process_realtime_telegram_news
-from sentiment_analysis.alpaca_news import process_realtime_alpaca_news
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ class ParallelProcessor:
         logger.info("Starting Google News scheduler thread...")
 
         def run_supervisor():
+            """Run Google News supervisor in thread."""
             try:
                 supervise_google_news()
             except Exception as e:
@@ -151,6 +152,7 @@ class ParallelProcessor:
         logger.info("Starting Alpaca WebSocket news feed...")
 
         async def run_alpaca():
+            """Run Alpaca WebSocket news processing."""
             try:
                 await process_realtime_alpaca_news()
             except Exception as e:
@@ -189,7 +191,7 @@ class ParallelProcessor:
         except Exception as e:
             logger.error(f"Error in event loop maintenance: {e}")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current status of all news processing sources."""
         return {
             "running": self.running,

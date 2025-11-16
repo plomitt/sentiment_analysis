@@ -18,11 +18,11 @@ from sentiment_analysis.logging_utils import setup_logging
 
 logger = setup_logging(__name__)
 
-MINUTE_INTERVAL=cast(int, CONFIG["interval_min"])
-START_DATETIME=cast(datetime, CONFIG["start_datetime"])
-END_DATETIME=cast(datetime, CONFIG["end_datetime"])
-MAX_CYCLES=cast(int, CONFIG["max_cycles"])
-MAX_DURATION_MINUTES=cast(int, CONFIG["max_duration_minutes"])
+MINUTE_INTERVAL=cast("int", CONFIG["interval_min"])
+START_DATETIME=cast("datetime", CONFIG["start_datetime"])
+END_DATETIME=cast("datetime", CONFIG["end_datetime"])
+MAX_CYCLES=cast("int", CONFIG["max_cycles"])
+MAX_DURATION_MINUTES=cast("int", CONFIG["max_duration_minutes"])
 
 
 def compute_first_run(dt: datetime, add_minutes: int = 1, threshold_seconds: int = 50) -> datetime:
@@ -118,9 +118,9 @@ def supervise_google_news() -> None:
         trigger=trigger,
         max_instances=1,
         kwargs={
-            'scheduler': scheduler,
-            'cycle_counter': cycle_counter,
-            'start_time': trigger_start,
+            "scheduler": scheduler,
+            "cycle_counter": cycle_counter,
+            "start_time": trigger_start,
         }
     )
 

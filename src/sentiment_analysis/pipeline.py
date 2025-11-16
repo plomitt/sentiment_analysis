@@ -14,10 +14,13 @@ import psycopg
 from pgvector.psycopg import register_vector
 
 from sentiment_analysis.config_utils import CONFIG
-from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
+from sentiment_analysis.db_utils import (
+    get_postgres_connection_string,
+    save_article_to_db,
+)
 from sentiment_analysis.embedding_model import EMBEDDING_MODEL
-from sentiment_analysis.sentiment_analyzer import analyze_article
 from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.sentiment_analyzer import analyze_article
 from sentiment_analysis.utils import make_embedding_text
 
 logger = setup_logging(__name__)
@@ -36,13 +39,12 @@ def get_existing_article_urls() -> set[str]:
     try:
         conn_string = get_postgres_connection_string()
 
-        with psycopg.connect(conn_string) as conn:
-            with conn.cursor() as cur:
-                logger.debug("Fetching existing article URLs from database")
-                cur.execute("SELECT url FROM articles")
-                existing_urls = {url for (url,) in cur.fetchall()}
-                logger.debug(f"Found {len(existing_urls)} existing articles in database")
-                return existing_urls
+        with psycopg.connect(conn_string) as conn, conn.cursor() as cur:
+            logger.debug("Fetching existing article URLs from database")
+            cur.execute("SELECT url FROM articles")
+            existing_urls = {url for (url,) in cur.fetchall()}
+            logger.debug(f"Found {len(existing_urls)} existing articles in database")
+            return existing_urls
 
     except Exception as e:
         logger.error(f"Failed to fetch existing article URLs: {e}")
@@ -185,7 +187,7 @@ def fetch_similar_articles(conn: psycopg.Connection, embedding: list, limit: int
         )
         rows = cur.fetchall()
         similar_articles = [{"title": r[0], "body": r[1], "sentiment_score": r[2]} for r in rows]
-    
+
     return similar_articles
 
 def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
@@ -224,7 +226,7 @@ def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> lis
 
                 article_duration = time.perf_counter() - article_start_time
                 logger.debug(f"Enriched article {i}/{len(articles)} in {article_duration:.2f}s")
-            
+
             total_duration = time.perf_counter() - start_time
             avg_time_per_article = total_duration / len(enriched_articles)
             logger.info(
@@ -415,13 +417,13 @@ def run_pipeline(news_articles: list[dict[str, Any]]) -> None:
         if not filtered_articles:
             logger.info("All articles are duplicates, no new articles to process")
             return
-        
+
         # Make vector embeddings
         embedded_articles = get_embedded_articles(filtered_articles)
         if not embedded_articles:
             logger.error("Failed to generate embeddings for articles")
             return
-        
+
         # Enrich with nearest similar articles from db
         use_similarity_scoring = bool(CONFIG["use_similarity_scoring"])
         enriched_articles = embedded_articles
@@ -431,7 +433,7 @@ def run_pipeline(news_articles: list[dict[str, Any]]) -> None:
                 logger.warning("Failed to enrich articles with similar articles, proceeding without enrichment")
         else:
             logger.info("Skipping enrichment")
-        
+
         # Analyze sentiment
         analyzed_articles = get_analyzed_articles(enriched_articles)
         if not analyzed_articles:

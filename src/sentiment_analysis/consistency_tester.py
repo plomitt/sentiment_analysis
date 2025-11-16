@@ -1146,7 +1146,7 @@ def run_full_consistency_test(
 
         # Summary
         logger.info("Full consistency test pipeline completed successfully!")
-        logger.info(f"Results summary:")
+        logger.info("Results summary:")
         logger.info(f"  - Test dataset: {results['test_news_file']}")
         logger.info(f"  - Test scores: {results['test_scores_file']}")
         logger.info(f"  - Analysis report: {results['analysis_report']}")
@@ -1180,7 +1180,7 @@ def get_user_choice(prompt: str, valid_choices: list[str]) -> str | None:
             return None
 
 
-def get_numeric_input(prompt: str, default: int | float, min_val: int = 1, datatype: str = "int") -> int | float | None:
+def get_numeric_input(prompt: str, default: float, min_val: int = 1, datatype: str = "int") -> int | float | None:
     """Get numeric input from user with validation.
 
     Args:
@@ -1226,10 +1226,9 @@ def get_boolean_input(prompt: str, default: bool) -> bool | None:
 
             if user_input in ["y", "yes", "true", "1"]:
                 return True
-            elif user_input in ["n", "no", "false", "0"]:
+            if user_input in ["n", "no", "false", "0"]:
                 return False
-            else:
-                print("Please enter 'y'/'n' or 'yes'/'no'.")
+            print("Please enter 'y'/'n' or 'yes'/'no'.")
         except (EOFError, KeyboardInterrupt):
             print("\nOperation cancelled by user.")
             return None
@@ -1291,10 +1290,10 @@ def interactive_cli() -> None:
 
         if choice is None:
             return
-        elif choice == "q":
+        if choice == "q":
             print("Goodbye!")
             return
-        elif choice == "1":
+        if choice == "1":
             handle_dataset_creation()
         elif choice == "2":
             handle_patch_process()
@@ -1332,12 +1331,12 @@ def handle_dataset_creation() -> None:
     )
     if consistency_dir is None:
         return
-    
+
     use_smart_search = get_boolean_input("Use smart search? (y/n, default: y): ", True)
     if use_smart_search is None:
         return
 
-    print(f"\nCreating consistency dataset with your parameters...")
+    print("\nCreating consistency dataset with your parameters...")
     result = create_consistency_dataset(
         n_articles=int(n_articles),
         max_iterations=int(max_iterations),
@@ -1347,9 +1346,9 @@ def handle_dataset_creation() -> None:
     )
 
     if result:
-        print(f"✅ Dataset created successfully: {result}")
+        logger.info(f"Dataset created successfully: {result}")
     else:
-        print("❌ Failed to create dataset")
+        logger.error("Failed to create dataset")
 
 
 def handle_patch_process() -> None:
@@ -1363,7 +1362,7 @@ def handle_patch_process() -> None:
     latest_file = find_latest_file(str(base_path), "test_news", "json")
 
     if not latest_file:
-        print("❌ No test news file found. Please create a dataset first.")
+        logger.error("No test news file found. Please create a dataset first.")
         return
 
     print(f"Found test news file: {latest_file}")
@@ -1400,7 +1399,7 @@ def handle_patch_process() -> None:
     )
     if stop_on_rate_limit is None:
         return
-    
+
     use_smart_search = get_boolean_input(
         "Use smart search? (y/n, default: y): ", True
     )
@@ -1418,9 +1417,9 @@ def handle_patch_process() -> None:
     )
 
     if result:
-        print(f"✅ Patch process completed: {result}")
+        logger.info(f"Patch process completed: {result}")
     else:
-        print("❌ Patch process failed")
+        logger.error("Patch process failed")
 
 
 def handle_full_consistency_test() -> None:
@@ -1467,12 +1466,12 @@ def handle_full_consistency_test() -> None:
     )
     if consistency_dir is None:
         return
-    
+
     use_smart_search = get_boolean_input("Use smart search? (y/n, default: y): ", True)
     if use_smart_search is None:
         return
-    
-    print(f"\nRunning full consistency test with your parameters...")
+
+    print("\nRunning full consistency test with your parameters...")
     result = run_full_consistency_test(
         n_articles=int(n_articles),
         n_runs=int(n_runs),
@@ -1485,15 +1484,15 @@ def handle_full_consistency_test() -> None:
     )
 
     if result and any(result.values()):
-        print("✅ Full consistency test completed successfully!")
+        logger.info("Full consistency test completed successfully!")
         if result.get("test_news_file"):
-            print(f"  Test dataset: {result['test_news_file']}")
+            logger.info(f"  Test dataset: {result['test_news_file']}")
         if result.get("test_scores_file"):
-            print(f"  Test scores: {result['test_scores_file']}")
+            logger.info(f"  Test scores: {result['test_scores_file']}")
         if result.get("analysis_report"):
-            print(f"  Analysis report: {result['analysis_report']}")
+            logger.info(f"  Analysis report: {result['analysis_report']}")
     else:
-        print("❌ Full consistency test failed")
+        logger.error("Full consistency test failed")
 
 
 # Define the public API for this module

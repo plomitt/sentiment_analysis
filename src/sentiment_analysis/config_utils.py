@@ -10,9 +10,9 @@ and configuration file settings.
 from __future__ import annotations
 
 import datetime
+import tomllib
 from pathlib import Path
 from pprint import pprint
-import tomllib
 from typing import Any, cast
 
 from sentiment_analysis.logging_utils import setup_logging
@@ -53,12 +53,12 @@ def get_default_values() -> dict[str, Any]:
 def load_file_config(cfg: dict) -> dict[str, Any]:
     """Load configuration from TOML file using CONFIG_DEFINITION."""
     file_config = {}
-    
+
     for section_name, section_config in CONFIG_DEFINITION.items():
         config_section = cfg.get(section_name, {})
         for key_name in section_config.keys():
             file_config[key_name] = config_section.get(key_name)
-    
+
     return file_config
 
 
@@ -70,7 +70,7 @@ def parse_datetime_fields(config: dict[str, Any]) -> None:
 
 
 def merge_config(
-    file_config: dict[str, Any], 
+    file_config: dict[str, Any],
     defaults: dict[str, Any]
 ) -> dict[str, Any]:
     """Merge configuration from file with defaults.
@@ -84,7 +84,7 @@ def merge_config(
     """
     merged_config: dict[str, str | int | float | bool | None | datetime.datetime] = {}
     for key, default_val in defaults.items():
-        merged_config[key] = cast(str | int | float | bool | None | datetime.datetime, default_val)
+        merged_config[key] = cast("str | int | float | bool | None | datetime.datetime", default_val)
         if file_config.get(key) is not None:
             merged_config[key] = file_config[key]
     return merged_config
@@ -99,7 +99,7 @@ def load_toml_config() -> dict[str, Any]:
     """
     config_path = Path(__file__).parent / CONFIG_FILENAME
     file_config = {}
-    
+
     if config_path.exists():
         logger.info("Found config file, loading")
         with open(config_path, "rb") as f:
@@ -107,7 +107,7 @@ def load_toml_config() -> dict[str, Any]:
         file_config = load_file_config(cfg)
     else:
         logger.warning("No config file found, using defaults")
-    
+
     return file_config
 
 
@@ -121,16 +121,16 @@ def get_config() -> dict[str, str | int | float | bool | None | datetime.datetim
 
     # Load configuration from file
     file_config = load_toml_config()
-    
+
     # Get default values
     defaults = get_default_values()
-    
+
     # Merge configurations
     final_config = merge_config(file_config, defaults)
-    
+
     # Parse datetime fields
     parse_datetime_fields(final_config)
-    
+
     return final_config
 
 
@@ -138,8 +138,8 @@ def get_config() -> dict[str, str | int | float | bool | None | datetime.datetim
 CONFIG = get_config()
 
 __all__ = [
-    "get_config",
-    "CONFIG"
+    "CONFIG",
+    "get_config"
 ]
 
 if __name__ == "__main__":
