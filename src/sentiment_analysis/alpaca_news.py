@@ -1,11 +1,10 @@
 import asyncio
 import json
 import os
-from typing import Any, cast
+from typing import Any
 import websockets
 from dotenv import load_dotenv
 
-from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
 from sentiment_analysis.utils import clean_up_body_text, convert_alpaca_to_iso, convert_alpaca_to_unix
@@ -136,9 +135,6 @@ async def process_realtime_alpaca_news():
             ping_interval=PING_INTERVAL,
             ping_timeout=PING_TIMEOUT
         ) as websocket:
-            # Load config
-            config = get_config()
-
             # Subscribe
             subscribed = await subscribe(websocket)
             if not subscribed:
@@ -168,16 +164,7 @@ async def process_realtime_alpaca_news():
                             }
 
                             # Run pipeline on single article
-                            run_pipeline(
-                                str(config["query"]),
-                                cast(int, config["article_count"]),
-                                bool(config["no_content"]),
-                                bool(config["use_similarity_scoring"]),
-                                bool(config["use_smart_search"]),
-                                bool(config["use_reasoning"]),
-                                cast(float, config["temperature"]),
-                                news_articles=[article]
-                            )
+                            run_pipeline([article])
                         else:
                             logger.warning(f"Failed to parse news: {news}")
                             

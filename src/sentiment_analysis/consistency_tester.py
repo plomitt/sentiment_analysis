@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
-from sentiment_analysis.news_rss_fetcher import (
+from sentiment_analysis.google_news import (
     fetch_article_body_content,
     fetch_news_rss,
 )
@@ -505,8 +505,6 @@ def load_test_scores_file(filepath: str) -> list[dict[str, Any]]:
 def run_pipeline_copy(
     articles: list[dict[str, Any]],
     similarity_mode: bool = False,
-    use_reasoning: bool | None = None,
-    temperature: float | None = None,
 ) -> list[dict[str, Any]]:
     """Run sentiment analysis pipeline and return results without saving to DB.
 
@@ -542,7 +540,7 @@ def run_pipeline_copy(
             enriched_articles = articles
 
         # Analyze sentiment
-        analyzed_articles = get_analyzed_articles(enriched_articles, use_reasoning=use_reasoning, temperature=temperature)
+        analyzed_articles = get_analyzed_articles(enriched_articles)
         if not analyzed_articles:
             logger.error("Failed to analyze articles in pipeline copy")
             return []
@@ -566,8 +564,6 @@ def run_consistency_test(
     n_runs: int = 10,
     similarity_mode: bool = False,
     consistency_dir: str = "consistency",
-    use_reasoning: bool | None = None,
-    temperature: float | None = None
 ) -> str | None:
     """Run consistency test on articles across multiple runs.
 
@@ -624,7 +620,7 @@ def run_consistency_test(
 
         try:
             # Run pipeline copy
-            analyzed_articles = run_pipeline_copy(articles, similarity_mode, use_reasoning=use_reasoning, temperature=temperature)
+            analyzed_articles = run_pipeline_copy(articles, similarity_mode)
 
             if not analyzed_articles:
                 logger.warning(f"No analyzed articles returned in run {run_num + 1}")
@@ -1043,8 +1039,6 @@ def run_full_consistency_test(
     consistency_dir: str = "consistency",
     force_recreate: bool = False,
     use_smart_search: bool = True,
-    use_reasoning: bool = True,
-    temperature: float = 0.1
 ) -> dict[str, str | None]:
     """Run the complete consistency testing pipeline.
 
@@ -1130,9 +1124,7 @@ def run_full_consistency_test(
             articles=articles,
             n_runs=n_runs,
             similarity_mode=similarity_mode,
-            consistency_dir=consistency_dir,
-            use_reasoning=use_reasoning,
-            temperature=temperature
+            consistency_dir=consistency_dir
         )
 
         if not test_scores_file:
@@ -1480,14 +1472,6 @@ def handle_full_consistency_test() -> None:
     if use_smart_search is None:
         return
     
-    use_reasoning = get_boolean_input("Use reasoning? (y/n, default: y): ", True)
-    if use_reasoning is None:
-        return
-    
-    temperature = get_numeric_input("Temperature (default: 0.1): ", 0.1, min_val=0, datatype="float")
-    if temperature is None:
-        return
-
     print(f"\nRunning full consistency test with your parameters...")
     result = run_full_consistency_test(
         n_articles=int(n_articles),
@@ -1498,8 +1482,6 @@ def handle_full_consistency_test() -> None:
         force_recreate=force_recreate,
         consistency_dir=consistency_dir,
         use_smart_search=use_smart_search,
-        use_reasoning=use_reasoning,
-        temperature=temperature
     )
 
     if result and any(result.values()):

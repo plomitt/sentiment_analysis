@@ -1,13 +1,11 @@
 import os
 import asyncio
-from typing import Any, cast
 from telethon import TelegramClient, events
 from dotenv import load_dotenv
 
-from sentiment_analysis.config_utils import get_config
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
-from sentiment_analysis.utils import convert_alpaca_to_iso, convert_alpaca_to_unix, clean_up_body_text
+from sentiment_analysis.utils import convert_alpaca_to_iso, convert_alpaca_to_unix
 
 logger = setup_logging(__name__)
 
@@ -22,9 +20,6 @@ channels_to_monitor = ['https://t.me/markettwits', 'https://t.me/crypto_hd']
 
 async def telegram_listen():
     logger.info("Starting listening to Telegram channels...")
-
-    # Load config
-    config = get_config()
 
     # Resolve entities
     entities = []
@@ -43,29 +38,22 @@ async def telegram_listen():
             channel_name = getattr(channel, 'title', None)
             user_name = getattr(channel, 'username', None)
             msg_id = m.id
+            body = m.text or m.raw_text
+            source = f"Telegram ({channel_name or user_name})"
             url = f"https://t.me/{user_name or channel_name}/{msg_id}"
-            text = m.text or m.raw_text
 
-            # Process article
+            # Define article
             article = {
                 "title": '',
-                "body": text,
-                "source": f"Telegram ({channel_name or user_name})",
+                "body": body,
+                "source": source,
                 "url": url,
                 "timestamp": convert_alpaca_to_iso(m.date),
                 "unix_timestamp": convert_alpaca_to_unix(m.date),
             }
 
-            run_pipeline(
-                str(config["query"]),
-                cast(int, config["article_count"]),
-                bool(config["no_content"]),
-                bool(config["use_similarity_scoring"]),
-                bool(config["use_smart_search"]),
-                bool(config["use_reasoning"]),
-                cast(float, config["temperature"]),
-                news_articles=[article]
-            )
+            # Process article
+            run_pipeline([article])
             
             logger.info(f"New message in {channel_name} (ID: {msg_id}) processed.")
             
@@ -76,11 +64,7 @@ async def telegram_listen():
     await client.run_until_disconnected()
 
 
-def process_realtime_telegram_news():
-    with client:
-        client.loop.run_until_complete(telegram_listen())
-
-async def async_telegram_monitor():
+async def process_realtime_telegram_news():
     """
     Async version of Telegram monitor that works with asyncio event loops.
     This function is compatible with the parallel processor's async execution.
@@ -101,10 +85,9 @@ async def async_telegram_monitor():
 
 
 __all__ = [
-    "process_realtime_telegram_news",
-    "async_telegram_monitor"
+    "process_realtime_telegram_news"
 ]
 
 
 if __name__ == '__main__':
-    process_realtime_telegram_news()
+    asyncio.run(process_realtime_telegram_news())

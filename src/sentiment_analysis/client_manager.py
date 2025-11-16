@@ -17,9 +17,7 @@ from instructor import Instructor, Mode
 from openai import OpenAI
 
 
-def merge_configs(
-    user_config: dict[str, Any], default_config: dict[str, Any]
-) -> dict[str, Any]:
+def merge_configs(user_config: dict[str, Any], default_config: dict[str, Any]) -> dict[str, Any]:
     """
     Merge user configuration with default configuration.
 
@@ -118,9 +116,7 @@ def build_lmstudio_client(config: dict[str, Any] | None = None) -> Instructor:
     )
 
 
-def build_client(
-    use_lmstudio: bool | None = None, config: dict[str, Any] | None = None
-) -> Instructor:
+def build_client(use_lmstudio: bool | None = None, config: dict[str, Any] | None = None) -> Instructor:
     """
     Build AI client based on configuration or environment variables.
 
@@ -142,6 +138,10 @@ def build_client(
     if use_lmstudio_final:
         return build_lmstudio_client(config)
     return build_openrouter_client(config)
+
+
+# Define a global LLM_CLIENT variable for easy access
+LLM_CLIENT = build_client()
 
 
 # Define the public API for this module

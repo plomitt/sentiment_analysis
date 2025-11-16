@@ -11,14 +11,11 @@ import asyncio
 import threading
 import logging
 import signal
-import sys
 from datetime import datetime
-from typing import Dict, Any, Optional
-import time
+from typing import Dict, Any
 
-from sentiment_analysis.config_utils import get_config
-from sentiment_analysis.supervisor import main as supervisor_main
-from sentiment_analysis.telegram_news import async_telegram_monitor
+from sentiment_analysis.google_supervisor import supervise_google_news
+from sentiment_analysis.telegram_news import process_realtime_telegram_news
 from sentiment_analysis.alpaca_news import process_realtime_alpaca_news
 
 logger = logging.getLogger(__name__)
@@ -34,9 +31,8 @@ class ParallelProcessor:
     3. Alpaca WebSocket news feed (real-time)
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self):
         """Initialize the parallel processor with configuration."""
-        self.config = config or get_config()
         self.running = False
         self.tasks = {}
         self.threads = {}
@@ -129,19 +125,7 @@ class ParallelProcessor:
 
         def run_supervisor():
             try:
-                supervisor_main(
-                    minute_interval=int(self.config["interval_min"]),
-                    query=str(self.config["query"]),
-                    article_count=int(self.config["article_count"]),
-                    no_content=bool(self.config["no_content"]),
-                    start_datetime=None,  # Use default
-                    end_datetime=None,    # Use default
-                    max_cycles=None,      # Use default
-                    max_duration_minutes=None,  # Use default
-                    use_smart_search=bool(self.config.get("use_smart_search", False)),
-                    use_reasoning=bool(self.config.get("use_reasoning", False)),
-                    temperature=float(self.config.get("temperature", 0.7))
-                )
+                supervise_google_news()
             except Exception as e:
                 logger.error(f"Google News scheduler error: {e}")
 
@@ -156,7 +140,7 @@ class ParallelProcessor:
         logger.info("Starting Telegram real-time monitor...")
 
         try:
-            task = asyncio.create_task(async_telegram_monitor())
+            task = asyncio.create_task(process_realtime_telegram_news())
             self.tasks["telegram"] = task
             logger.info("Telegram monitor started")
         except Exception as e:
@@ -225,14 +209,11 @@ class ParallelProcessor:
         }
 
 
-async def run_parallel_processor(config: Optional[Dict[str, Any]] = None):
+async def run_parallel_processor():
     """
     Convenience function to run the parallel processor.
-
-    Args:
-        config: Optional configuration dictionary
     """
-    processor = ParallelProcessor(config)
+    processor = ParallelProcessor()
 
     try:
         await processor.start_all()
@@ -245,5 +226,4 @@ async def run_parallel_processor(config: Optional[Dict[str, Any]] = None):
 
 
 if __name__ == "__main__":
-    # Run the parallel processor
     asyncio.run(run_parallel_processor())

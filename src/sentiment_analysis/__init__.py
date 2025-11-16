@@ -13,7 +13,7 @@ from sentiment_analysis.pipeline import run_pipeline
 from sentiment_analysis.config_utils import get_config
 
 # Data fetching and processing
-from sentiment_analysis.news_rss_fetcher import (
+from sentiment_analysis.google_news import (
     fetch_news_rss,
     fetch_article_body_content,
     save_articles_to_json,
@@ -25,7 +25,6 @@ from sentiment_analysis.sentiment_analyzer import (
     ArticleWithSentiment,
     analyze_article,
     analyze_articles_batch,
-    create_client,
 )
 
 # Search functionality
@@ -80,7 +79,6 @@ __all__ = [
     "ArticleWithSentiment",
     "analyze_article",
     "analyze_articles_batch",
-    "create_client",
 
     # Search
     "searxng_search",

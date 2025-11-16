@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Sentiment analysis pipeline orchestration.
 
@@ -9,17 +8,15 @@ analyzing sentiment, and saving results to the PostgreSQL database.
 from __future__ import annotations
 
 import time
-from typing import Any, cast
+from typing import Any
 
 import psycopg
-from instructor import Instructor
 from pgvector.psycopg import register_vector
 
-from sentiment_analysis.config_utils import get_config
+from sentiment_analysis.config_utils import CONFIG
 from sentiment_analysis.db_utils import get_postgres_connection_string, save_article_to_db
 from sentiment_analysis.embedding_model import EMBEDDING_MODEL
-from sentiment_analysis.news_rss_fetcher import fetch_news_rss
-from sentiment_analysis.sentiment_analyzer import analyze_article, create_client
+from sentiment_analysis.sentiment_analyzer import analyze_article
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.utils import make_embedding_text
 
@@ -242,14 +239,7 @@ def get_enriched_articles(articles: list[dict[str, Any]], limit: int = 5) -> lis
         return articles
 
 
-def get_analysis_results(
-    title: str,
-    body: str,
-    nearest_similar_articles: list[dict[str, Any]],
-    client: Instructor,
-    use_reasoning: bool | None = None,
-    temperature: float | None = None
-) -> tuple[str, str, bool]:
+def get_analysis_results(title: str, body: str, nearest_similar_articles: list[dict[str, Any]]) -> tuple[str, str, bool]:
     """
     Analyze sentiment for an article and return results.
 
@@ -265,10 +255,9 @@ def get_analysis_results(
         tuple[str, str, bool]: Tuple containing (score, reasoning, success_flag).
     """
     sentiment_result = analyze_article(
-        title, body, client,
+        title,
+        body,
         nearest_similar_articles=nearest_similar_articles,
-        use_reasoning=cast(bool, use_reasoning),
-        temperature=cast(float, temperature)
     )
     sentiment_data = sentiment_result.model_dump()
 
@@ -278,12 +267,7 @@ def get_analysis_results(
 
     return score, reasoning, sentiment_analysis_success
 
-def get_analyzed_article(
-    article: dict[str, Any],
-    client: Instructor,
-    use_reasoning: bool | None = None,
-    temperature: float | None = None
-) -> dict[str, Any]:
+def get_analyzed_article(article: dict[str, Any]) -> dict[str, Any]:
     """
     Analyze sentiment for a single article.
 
@@ -302,7 +286,7 @@ def get_analyzed_article(
     nearest_similar_articles = article.get("nearest_similar_articles", [])
 
     # Analyze sentiment
-    score, reasoning, sentiment_analysis_success = get_analysis_results(title, body, nearest_similar_articles, client, use_reasoning=use_reasoning, temperature=temperature)
+    score, reasoning, sentiment_analysis_success = get_analysis_results(title, body, nearest_similar_articles)
 
     analyzed_article = dict(article)
     analyzed_article["sentiment_analysis_success"] = sentiment_analysis_success
@@ -311,7 +295,7 @@ def get_analyzed_article(
 
     return analyzed_article
 
-def get_analyzed_articles(articles: list[dict[str, Any]], use_reasoning: bool | None = None, temperature: float | None = None) -> list[dict[str, Any]]:
+def get_analyzed_articles(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not articles:
         logger.warning("No articles provided for sentiment analysis")
         return []
@@ -320,18 +304,13 @@ def get_analyzed_articles(articles: list[dict[str, Any]], use_reasoning: bool | 
 
     try:
         start_time = time.perf_counter()
-
-        # Initialize client once for the entire batch
-        client = create_client()
-        logger.debug("AI client created successfully")
-
         analyzed_articles = []
 
         # Analyze articles
         for i, article in enumerate(articles, 1):
             article_start_time = time.perf_counter()
 
-            analyzed_article = get_analyzed_article(article, client, use_reasoning=use_reasoning, temperature=temperature)
+            analyzed_article = get_analyzed_article(article)
             analyzed_articles.append(analyzed_article)
 
             article_duration = time.perf_counter() - article_start_time
@@ -412,39 +391,27 @@ def save_articles_to_db(articles: list[dict[str, Any]]) -> int:
     return processed_articles
 
 
-def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bool = True, use_similarity_scoring: bool = True, use_smart_search: bool = False, use_reasoning: bool | None = True, temperature: float | None = 0.1, news_articles: list[dict[str, Any]] | None = None) -> None:
+def run_pipeline(news_articles: list[dict[str, Any]]) -> None:
     """
     Run the complete sentiment analysis pipeline.
 
-    Fetches Bitcoin news articles, analyzes their sentiment, and saves results
+    Receives news articles, analyzes their sentiment, and saves results
     to the PostgreSQL database.
 
     Args:
-        query: Search query for RSS feed (default: "bitcoin").
-        article_count: Number of articles to fetch (default: 10).
-        no_content: Skip fetching article content if True (default: True).
-        use_similarity_scoring: Use similarity-based scoring for sentiment analysis if True (default: True).
-        use_smart_search: Use smart search if True for body content fetching (default: False).
-        use_reasoning: Whether to use reasoning in sentiment analysis (default: True).
-        temperature: Temperature for AI model (default: 0.1).
         news_articles: Optional list of article dictionaries to use instead of fetching from RSS (default: None).
     """
     try:
         logger.info("Starting pipeline")
         pipeline_start_time = time.perf_counter()
 
-        # Fetch news articles
-        if news_articles:
-            fetched_articles = news_articles
-            logger.info(f"Using provided {len(fetched_articles)} articles for pipeline")
-        else:
-            fetched_articles = fetch_news_rss(query=query, count=article_count, no_content=no_content, use_smart_search=use_smart_search)
-        if not fetched_articles:
-            logger.warning("No articles fetched from RSS feed or provided")
+        # Check if articles are provided
+        if not news_articles:
+            logger.warning("No articles provided")
             return
 
         # Filter out duplicates
-        filtered_articles = filter_duplicate_articles(fetched_articles)
+        filtered_articles = filter_duplicate_articles(news_articles)
         if not filtered_articles:
             logger.info("All articles are duplicates, no new articles to process")
             return
@@ -455,17 +422,18 @@ def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bo
             logger.error("Failed to generate embeddings for articles")
             return
         
+        # Enrich with nearest similar articles from db
+        use_similarity_scoring = bool(CONFIG["use_similarity_scoring"])
+        enriched_articles = embedded_articles
         if use_similarity_scoring:
-            # Enrich with nearest similar articles from db
             enriched_articles = get_enriched_articles(embedded_articles)
             if not enriched_articles:
-                logger.warning("Failed to enrich articles with similar articles")
+                logger.warning("Failed to enrich articles with similar articles, proceeding without enrichment")
         else:
-            enriched_articles = embedded_articles
-            logger.info("Skpiping enrichment")
+            logger.info("Skipping enrichment")
         
         # Analyze sentiment
-        analyzed_articles = get_analyzed_articles(enriched_articles, use_reasoning=use_reasoning, temperature=temperature)
+        analyzed_articles = get_analyzed_articles(enriched_articles)
         if not analyzed_articles:
             logger.error("Failed to analyze articles")
             return
@@ -477,7 +445,7 @@ def run_pipeline(query: str = "bitcoin", article_count: int = 10, no_content: bo
             return
 
         pipeline_duration = time.perf_counter() - pipeline_start_time
-        logger.info(f"Pipeline completed successfully in {pipeline_duration:.2f}s: fetched {len(fetched_articles)}, filtered {len(filtered_articles)}, embedded {len(embedded_articles)}, analyzed {len(analyzed_articles)}, saved {num_saved_articles} articles.")
+        logger.info(f"Pipeline completed successfully in {pipeline_duration:.2f}s: provided {len(news_articles)}, filtered {len(filtered_articles)}, embedded {len(embedded_articles)}, analyzed {len(analyzed_articles)}, saved {num_saved_articles} articles.")
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
@@ -492,16 +460,3 @@ __all__ = [
     "get_enriched_articles",
     "run_pipeline",
 ]
-
-if __name__ == "__main__":
-    config = get_config()
-
-    run_pipeline(
-        str(config["query"]),
-        cast(int, config["article_count"]),
-        bool(config["no_content"]),
-        bool(config["use_similarity_scoring"]),
-        bool(config["use_smart_search"]),
-        bool(config["use_reasoning"]),
-        cast(float, config["temperature"])
-    )
