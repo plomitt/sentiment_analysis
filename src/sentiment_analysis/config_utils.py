@@ -22,12 +22,7 @@ logger = setup_logging(__name__)
 CONFIG_FILENAME = "config.toml"
 CONFIG_DEFINITION = {
     "pipeline": {
-        "query": "bitcoin",
-        "article_count": 10,
-        "no_content": True,
-        "request_delay": 0,
         "use_similarity_scoring": True,
-        "use_smart_search": False,
         "temperature": 0.1,
         "use_reasoning": True,
     },
@@ -37,6 +32,19 @@ CONFIG_DEFINITION = {
         "end_datetime": None,
         "max_cycles": None,
         "max_duration_minutes": None,
+    },
+    "google":{
+        "query": "bitcoin",
+        "article_count": 10,
+        "no_content": True,
+        "use_smart_search": False,
+        "request_delay": 0,
+    },
+    "alpaca": {
+        "news_symbols": ["BTCUSD"],
+    },
+    "telegram": {
+        "channels_to_monitor": [],
     }
 }
 

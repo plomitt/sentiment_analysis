@@ -6,6 +6,7 @@ from typing import Any
 import websockets
 from dotenv import load_dotenv
 
+from sentiment_analysis.config_utils import CONFIG
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
 from sentiment_analysis.utils import (
@@ -124,8 +125,7 @@ async def subscribe(websocket: Any) -> bool | None:
     # Subscribe
     subscription_message = {
         "action": "subscribe",
-        "news": ["BTCUSD"],
-        # "news": ["*"],
+        "news": CONFIG["news_symbols"],
     }
     await websocket.send(json.dumps(subscription_message))
     subscription_response = await websocket.recv()

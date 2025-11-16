@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 
+from sentiment_analysis.config_utils import CONFIG
 from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.pipeline import run_pipeline
 from sentiment_analysis.utils import convert_alpaca_to_iso, convert_alpaca_to_unix
@@ -16,7 +17,7 @@ api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
 client = TelegramClient("session_name", api_id, api_hash)
 
-channels_to_monitor = ["https://t.me/markettwits", "https://t.me/crypto_hd"]
+channels_to_monitor = CONFIG["channels_to_monitor"]
 
 
 async def telegram_listen():
@@ -26,6 +27,14 @@ async def telegram_listen():
     new messages through the sentiment analysis pipeline.
     """
     logger.info("Starting listening to Telegram channels...")
+
+    # Validate channels configuration
+    if not channels_to_monitor:
+        logger.warning("No Telegram channels configured to monitor. Please set channels_to_monitor in your config.toml file.")
+        logger.info("Example configuration in config.toml:")
+        logger.info("[telegram]")
+        logger.info('channels_to_monitor = ["https://t.me/markettwits", "https://t.me/crypto_hd"]')
+        return
 
     # Resolve entities
     entities = []
