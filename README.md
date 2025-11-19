@@ -38,7 +38,7 @@ Each script loads the latest corresponding source file from `/news` and `/sentim
 
 Control these files using the `config.toml` file. Default values are loaded first, then config values overwrite them.
 
-Check `config_example.toml` for parameters.
+Check `config.toml.example` for parameters.
 
 ### Consistency Tester
 
