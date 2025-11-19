@@ -65,7 +65,7 @@ sentiment-analysis/
 ├── README.md                         # This file
 └── src/
     └── sentiment_analysis/
-        ├── __init__.py               # Public API exports and package metadata (25+ functions)
+        ├── __init__.py               # Public API exports and package metadata
         ├── alpaca_news.py            # Process news from Alpaca
         ├── client_manager.py         # AI client configuration (OpenRouter/LMStudio)
         ├── config_utils.py           # Configuration management
