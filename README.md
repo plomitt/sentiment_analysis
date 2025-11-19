@@ -20,6 +20,8 @@ Configure the configuration file by renaming `config.toml.example` to `config.to
 
 Run `db_utils.py` and choose option `setup_database` in the CLI. This will create a new preconfigured table called `articles`. Warning: this will drop the existing `articles` table before rebuilding it, so avoid data loss by preferably using a clean PostgreSQL instance.
 
+Run `telegram_news.py` and follow the instructions in the terminal to log in.
+
 ## Usage
 
 There are three main usage methods: run individual files for testing, run the `consistency_tester`, or run the `parallel_processor`.
@@ -54,12 +56,13 @@ The codebase follows a clean, modular architecture with comprehensive API design
 
 ```
 sentiment-analysis/
-├── pyproject.toml                    # Project configuration and dependencies
-├── ruff.toml                         # Linting and formatting rules
-├── .mypy.ini                         # Type checking configuration
-├── .pre-commit-config.yaml           # Pre-commit hooks configuration
-├── README.md                         # This file
+├── .env                              # Environment variables (user-configured)
 ├── .env.example                      # Environment variables template
+├── .gitignore
+├── LICENSE
+├── poetry.lock                       # Snapshot of dependencies
+├── pyproject.toml                    # Project configuration and dependencies
+├── README.md                         # This file
 └── src/
     └── sentiment_analysis/
         ├── __init__.py               # Public API exports and package metadata (25+ functions)
