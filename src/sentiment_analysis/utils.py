@@ -263,7 +263,7 @@ def validate_env_config(required_vars: list[str]) -> bool:
         logger.error(f"Missing required environment variables: {missing_vars}")
         return False
 
-    logger.info("Environment variables configuration validated.")
+    logger.debug("Environment variables configuration validated.")
     return True
 
 

@@ -45,6 +45,14 @@ CONFIG_DEFINITION = {
     },
     "telegram": {
         "channels_to_monitor": [],
+    },
+    "restart_policy": {
+        "max_restarts": 3,
+        "initial_backoff_seconds": 1.0,
+        "backoff_multiplier": 2.0,
+        "max_backoff_seconds": 60.0,
+        "enable_auto_restart": True,
+        "health_check_interval": 5.0,
     }
 }
 
