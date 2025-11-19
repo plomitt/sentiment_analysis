@@ -16,7 +16,7 @@ Start SearXNG and PostgreSQL containers (and LMStudio if used).
 
 Configure environment variables by renaming `.env.example` to `.env` and filling in your values.
 
-Configure the configuration file by renaming `config_example.toml` to `config.toml` and filling in your values.
+Configure the configuration file by renaming `config.toml.example` to `config.toml` and filling in your values.
 
 Run `db_utils.py` and choose option `setup_database` in the CLI. This will create a new preconfigured table called `articles`. Warning: this will drop the existing `articles` table before rebuilding it, so avoid data loss by preferably using a clean PostgreSQL instance.
 
