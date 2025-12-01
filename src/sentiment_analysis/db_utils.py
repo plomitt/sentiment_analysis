@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Database operations and setup utilities.
@@ -10,15 +9,15 @@ article saving functionality for the sentiment analysis system.
 from __future__ import annotations
 
 import os
-import logging
-from typing import Any
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 import psycopg
-from psycopg import OperationalError
 from dotenv import load_dotenv
+from psycopg import OperationalError
 
-from sentiment_analysis.utils import validate_env_config, setup_logging
+from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.utils import validate_env_config
 
 logger = setup_logging(__name__)
 
@@ -72,8 +71,8 @@ def save_article_to_db(article: dict[str, Any], cur: psycopg.Cursor) -> bool:
     """
     # Validate required fields
     required_fields = [
-        'title', 'source', 'url', 'timestamp', 'unix_timestamp',
-        'sentiment_analysis_success', 'sentiment_score', 'sentiment_reasoning'
+        "title", "source", "url", "timestamp", "unix_timestamp",
+        "sentiment_analysis_success", "sentiment_score", "sentiment_reasoning"
     ]
 
     missing_fields = [field for field in required_fields if field not in article]
@@ -85,22 +84,22 @@ def save_article_to_db(article: dict[str, Any], cur: psycopg.Cursor) -> bool:
     # Validate and prepare data
     try:
         article_data: dict[str, Any] = {
-            'title': str(article['title']),
-            'body': article.get('body'),  # Can be None
-            'source': str(article['source']),
-            'url': str(article['url']),
-            'timestamp': str(article['timestamp']),
-            'unix_timestamp': int(article['unix_timestamp']),
-            'sentiment_analysis_success': bool(article['sentiment_analysis_success']),
-            'sentiment_score': Decimal(str(article['sentiment_score'])),
-            'sentiment_reasoning': str(article['sentiment_reasoning']),
-            'embedding': list(article['embedding'])
+            "title": str(article["title"]),
+            "body": article.get("body"),  # Can be None
+            "source": str(article["source"]),
+            "url": str(article["url"]),
+            "timestamp": str(article["timestamp"]),
+            "unix_timestamp": int(article["unix_timestamp"]),
+            "sentiment_analysis_success": bool(article["sentiment_analysis_success"]),
+            "sentiment_score": Decimal(str(article["sentiment_score"])),
+            "sentiment_reasoning": str(article["sentiment_reasoning"]),
+            "embedding": list(article["embedding"])
         }
 
         # Validate sentiment score range (1-10)
-        score = article_data['sentiment_score']
+        score = article_data["sentiment_score"]
         assert isinstance(score, Decimal), "score should be a Decimal"
-        if not (Decimal('1.0') <= score <= Decimal('10.0')):
+        if not (Decimal("1.0") <= score <= Decimal("10.0")):
             raise ValueError(f"Sentiment score {score} out of valid range (1.0-10.0)")
 
     except (ValueError, TypeError, InvalidOperation) as e:
@@ -200,7 +199,7 @@ def setup_database(clean_install: bool = False) -> bool:
         ValueError: If required environment variables are missing.
     """
     logger.info("Starting database setup...")
-    
+
     # Get database connection string
     try:
         conn_string = get_postgres_connection_string()
@@ -208,7 +207,7 @@ def setup_database(clean_install: bool = False) -> bool:
     except ValueError as e:
         logger.error(f"Failed to get database connection: {e}")
         raise
-    
+
     # SQL setup script
     setup_sql = """
     -- 1. Enable extensions
@@ -217,13 +216,13 @@ def setup_database(clean_install: bool = False) -> bool:
     
     -- 2. Drop existing table if clean_install is True
     """
-    
+
     if clean_install:
         setup_sql += """
         DROP TABLE IF EXISTS public.articles CASCADE;
         """
         logger.info("Clean install enabled: dropping existing articles table")
-    
+
     setup_sql += f"""
     -- 3. Create the articles table
     CREATE TABLE public.articles (
@@ -248,48 +247,48 @@ def setup_database(clean_install: bool = False) -> bool:
     -- 5. Create vector indexing
     CREATE INDEX ON public.articles USING hnsw (embedding vector_cosine_ops) WITH (m = {COSINE_M}, ef_construction = {COSINE_EF_CONSTRUCTION});
     """
-    
+
     # Execute setup script
     try:
         with psycopg.connect(conn_string) as conn:
             with conn.cursor() as cur:
                 logger.info("Executing database setup script...")
-                
+
                 # Execute the setup SQL
                 cur.execute(setup_sql)
-                
+
                 # Verify table creation
                 cur.execute("""
                     SELECT table_name 
                     FROM information_schema.tables 
                     WHERE table_schema = 'public' AND table_name = 'articles'
                 """)
-                
+
                 result = cur.fetchone()
                 if not result:
                     raise OperationalError("Articles table was not created successfully")
-                
+
                 # Verify extensions
                 cur.execute("""
                     SELECT extname 
                     FROM pg_extension 
                     WHERE extname IN ('pgcrypto', 'vector')
                 """)
-                
+
                 extensions = [row[0] for row in cur.fetchall()]
                 missing_extensions = []
-                for ext in ['pgcrypto', 'vector']:
+                for ext in ["pgcrypto", "vector"]:
                     if ext not in extensions:
                         missing_extensions.append(ext)
-                
+
                 if missing_extensions:
                     raise OperationalError(f"Failed to create extensions: {missing_extensions}")
-                
+
                 logger.info("Database setup completed successfully")
                 logger.info(f"Created articles table with extensions: {', '.join(extensions)}")
-                
+
                 return True
-                
+
     except OperationalError as e:
         error_msg = f"Database setup failed: {e}"
         logger.error(error_msg)
@@ -302,15 +301,15 @@ def setup_database(clean_install: bool = False) -> bool:
 
 def run_setup() -> None:
     user_input = input("Select one of the following by typing the name - (rebuild_index, setup_database): ")
-    if user_input.lower() == 'rebuild_index':
+    if user_input.lower() == "rebuild_index":
         user_input = input("Enter the m parameter for the vector index (leave blank for default - 16): ")
         m = int(user_input) if user_input else COSINE_M
         user_input = input("Enter the ef_construction parameter for the vector index (leave blank for default - 64): ")
         ef_construction = int(user_input) if user_input else COSINE_EF_CONSTRUCTION
         rebuild_vector_index(m, ef_construction)
-    elif user_input.lower() == 'setup_database':
+    elif user_input.lower() == "setup_database":
         user_input = input("This will set up a clean database instance (dropping existing tables). Type 'confirm' to proceed: ")
-        if user_input.lower() == 'confirm':
+        if user_input.lower() == "confirm":
             setup_database(clean_install=True)
         else:
             print("Database setup cancelled.")
@@ -321,10 +320,10 @@ def run_setup() -> None:
 # Define the public API for this module
 __all__ = [
     "get_postgres_connection_string",
-    "save_article_to_db",
     "rebuild_vector_index",
-    "setup_database",
     "run_setup",
+    "save_article_to_db",
+    "setup_database",
 ]
 
 if __name__ == "__main__":

@@ -21,12 +21,12 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from sentiment_analysis.logging_utils import setup_logging
 from sentiment_analysis.utils import (
     ensure_directory,
     find_latest_file,
     load_json_data,
     make_timestamped_filename,
-    setup_logging,
 )
 
 # Configure logging
@@ -117,18 +117,18 @@ def determine_input_file(base_input_file: str | None, input_dir: str) -> str | N
     if base_input_file:
         # Manual file specified
         input_file = base_input_file
-        logger.info(f"📁 Using manually specified input file: {base_input_file}")
+        logger.info(f"Using manually specified input file: {base_input_file}")
     else:
         # Auto-detect latest sentiment file
-        logger.info("🔍 Auto-detecting latest sentiment file...")
+        logger.info("Auto-detecting latest sentiment file...")
         latest_file = find_latest_file(input_dir, "sentiments", "json")
         if not latest_file:
-            logger.error("❌ Error: No sentiment files found in src/sentiment_analysis/sentiments/")
+            logger.error("Error: No sentiment files found in src/sentiment_analysis/sentiments/")
             logger.error("Please run sentiment analyzer first to generate sentiment files.")
             return None
         input_file = latest_file
 
-    logger.info(f"📁 Input file: {input_file}")
+    logger.info(f"Input file: {input_file}")
     return input_file
 
 

@@ -83,7 +83,7 @@ def normalize_text(text: str | None, fallback_text: str) -> str:
     Returns:
         str: Normalized text or fallback text.
     """
-    if text is None or text == '':
+    if text is None or text == "":
         return fallback_text
     return text
 
@@ -116,9 +116,9 @@ def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_ar
         """
 
         for i, article in enumerate(similar_articles, 1):
-            article_title = normalize_text(article.get('title'), MISSING_TITLE_TEXT)
-            article_body = normalize_text(article.get('body'), MISSING_BODY_TEXT)
-            sentiment_score = article.get('sentiment_score', 'N/A')
+            article_title = normalize_text(article.get("title"), MISSING_TITLE_TEXT)
+            article_body = normalize_text(article.get("body"), MISSING_BODY_TEXT)
+            sentiment_score = article.get("sentiment_score", "N/A")
 
             similar_articles_section += f"""
                 Similar Article {i}:
@@ -152,6 +152,6 @@ def get_sentiment_analysis_prompt_with_context(title: str, body: str, similar_ar
 
 # Define the public API for this module
 __all__ = [
-    "get_system_prompt",
     "get_sentiment_analysis_prompt_with_context",
+    "get_system_prompt",
 ]

@@ -1,0 +1,36 @@
+[pipeline]
+use_similarity_scoring = true # Use similarity-based scoring for sentiment analysis if true
+temperature = 0.1             # Temperature for sentiment analysis
+use_reasoning = true          # Use reasoning for sentiment analysis if true
+
+[scheduler]
+interval_min = 5                       # Run every 5 minutes
+start_datetime = "2025-11-06T17:00:00" # Start at this datetime
+end_datetime = "2025-11-06T18:00:00"   # Stop at this datetime
+max_cycles = 10                        # Stop after N amount of runs
+max_duration_minutes = 60              # Stop after N amount of minutes
+
+[google]
+query = "bitcoin"        # News fetching query
+article_count = 10       # Max amount of articles to fetch per pipeline run
+no_content = true        # Fetch news without the article body if true
+use_smart_search = false # Use smart search for body content fetching if true
+request_delay = 0        # Delay between SearXNG requests in seconds
+
+[alpaca]
+# News symbols to subscribe to for Alpaca real-time news
+# Default: ["BTCUSD"]
+news_symbols = ["BTCUSD"] # [e.g., "BTCUSD", "ETHUSD"], or ["*"] for all symbols
+
+[telegram]
+# Telegram channels to monitor for news
+# Default: [] (no channels)
+channels_to_monitor = ["https://t.me/nytimes"]  # Channels to listen to
+
+[restart_policy]
+max_restarts = 3               # Maximum number of restart attempts before giving up
+initial_backoff_seconds = 1.0  # Initial delay before the first restart attempt (in seconds)
+backoff_multiplier = 2.0       # Multiplier applied to backoff delay after each failed restart
+max_backoff_seconds = 60.0     # Maximum allowed backoff delay (in seconds)
+enable_auto_restart = true     # Automatically restart the pipeline if it stops unexpectedly
+health_check_interval = 5.0    # How often to run health checks to detect failures (in seconds)

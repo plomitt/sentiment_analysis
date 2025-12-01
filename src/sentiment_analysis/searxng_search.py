@@ -17,7 +17,7 @@ from typing import Any, cast
 import aiohttp
 from dotenv import load_dotenv
 
-from sentiment_analysis.utils import setup_logging
+from sentiment_analysis.logging_utils import setup_logging
 
 # Configure logging
 logger = setup_logging(__name__)
@@ -76,7 +76,7 @@ async def fetch_search_results(
             )
 
         data = await response.json()
-        results = cast(list, data.get("results", []))
+        results = cast("list", data.get("results", []))
 
         # Add the query to each result
         for result in results:
@@ -209,7 +209,7 @@ def searxng_search(
     """
     load_dotenv()
     final_base_url = base_url or os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
-    final_base_url = cast(str, final_base_url)
+    final_base_url = cast("str", final_base_url)
 
     with ThreadPoolExecutor() as executor:
         return executor.submit(
@@ -286,10 +286,7 @@ def smart_searxng_search(
 
                 # Check if we got valid results
                 if result and result.get("results"):
-                    logger.info(
-                        f"✅ Success with {instance_url} "
-                        f"(cycle {cycle + 1}, attempt {total_attempts})"
-                    )
+                    logger.info(f"Success with {instance_url} (cycle {cycle + 1}, attempt {total_attempts})")
                     return {
                         **result,
                         "instance_used": instance_url,
@@ -297,46 +294,34 @@ def smart_searxng_search(
                         "total_attempts": total_attempts,
                         "fallback_used": instance_url != local_instance,
                     }
-                else:
-                    logger.warning(f"No results returned from {instance_url}")
+                logger.warning(f"No results returned from {instance_url}")
 
             except Exception as e:
                 error_str = str(e).lower()
 
                 # Check for rate limiting
                 if "429" in error_str or "too many requests" in error_str:
-                    logger.warning(
-                        f"🚫 Rate limited by {instance_url}, trying next instance"
-                    )
+                    logger.warning(f"Rate limited by {instance_url}, trying next instance")
                     continue
 
                 # Check for other HTTP errors
-                elif "timeout" in error_str:
-                    logger.warning(
-                        f"⏰ Timeout from {instance_url}, trying next instance"
-                    )
+                if "timeout" in error_str:
+                    logger.warning(f"Timeout from {instance_url}, trying next instance")
                     continue
 
-                elif "connection" in error_str or "refused" in error_str:
-                    logger.warning(
-                        f"🔌 Connection error from {instance_url}, trying next instance"
-                    )
+                if "connection" in error_str or "refused" in error_str:
+                    logger.warning(f"Connection error from {instance_url}, trying next instance")
                     continue
 
-                elif "403" in error_str or "forbidden" in error_str:
-                    logger.warning(
-                        f"🚫 Forbidden by {instance_url}, trying next instance"
-                    )
+                if "403" in error_str or "forbidden" in error_str:
+                    logger.warning(f"Forbidden by {instance_url}, trying next instance")
                     continue
 
-                else:
-                    logger.warning(f"❌ Error with {instance_url}: {str(e)[:100]}...")
-                    continue
+                logger.warning(f"Error with {instance_url}: {str(e)[:100]}...")
+                continue
 
     # If we get here, all instances failed after all cycles
-    logger.error(
-        f"❌ All instances failed after {max_cycles} cycles ({total_attempts} total attempts)"
-    )
+    logger.error(f"All instances failed after {max_cycles} cycles ({total_attempts} total attempts)")
 
     return {
         "results": [],

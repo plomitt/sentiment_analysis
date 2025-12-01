@@ -11,18 +11,20 @@ from __future__ import annotations
 import os
 from typing import Any, cast
 
-from instructor import Instructor, Mode
 from pydantic import BaseModel, Field, field_validator
 
-from sentiment_analysis.client_manager import build_client
-from sentiment_analysis.config_utils import get_config
-from sentiment_analysis.prompt_manager import get_sentiment_analysis_prompt_with_context, get_system_prompt
+from sentiment_analysis.client_manager import LLM_CLIENT
+from sentiment_analysis.config_utils import CONFIG
+from sentiment_analysis.logging_utils import setup_logging
+from sentiment_analysis.prompt_manager import (
+    get_sentiment_analysis_prompt_with_context,
+    get_system_prompt,
+)
 from sentiment_analysis.utils import (
     find_latest_file,
     load_json_data,
     make_timestamped_filename,
     save_json_data,
-    setup_logging,
 )
 
 # Configure logging
@@ -51,7 +53,7 @@ class SentimentAnalysis(BaseModel):
 class SentimentAnalysisWithReasoning(SentimentAnalysis):
     """Structured output for sentiment analysis results."""
 
-    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications",)
+    reasoning: str = Field(..., description="Concise reasoning for the score focusing on trading implications")
 
 
 class ArticleWithSentiment(BaseModel):
@@ -102,7 +104,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         List of article dictionaries.
     """
     try:
-        articles = cast(list[dict[str, Any]], load_json_data(file_path))
+        articles = cast("list[dict[str, Any]]", load_json_data(file_path))
         logger.info(f"Loaded {len(articles)} articles from {file_path}")
         return articles
     except Exception as e:
@@ -111,26 +113,7 @@ def load_articles_from_json(file_path: str) -> list[dict[str, Any]]:
         return []
 
 
-def create_client() -> Instructor:
-    """
-    Create and return an Instructor client for sentiment analysis.
-
-    Returns:
-        Configured client instance.
-    """
-    client = build_client()
-    logger.info("Instructor client created for sentiment analysis")
-    return client
-
-
-def analyze_article(
-    title: str,
-    body: str | None,
-    client: Instructor,
-    nearest_similar_articles: list[dict[str, Any]] | None = None,
-    use_reasoning: bool = True,
-    temperature: float = 0.1
-) -> SentimentAnalysisWithReasoning:
+def analyze_article(title: str, body: str | None, nearest_similar_articles: list[dict[str, Any]] | None = None) -> SentimentAnalysisWithReasoning:
     """
     Analyze a single article for sentiment.
 
@@ -149,13 +132,16 @@ def analyze_article(
     body_content = body if body else ""
 
     try:
+        use_reasoning = bool(CONFIG["use_reasoning"])
+        temperature = float(CONFIG["temperature"])
+
         # Get the formatted prompts
         system_prompt = get_system_prompt()
         prompt = get_sentiment_analysis_prompt_with_context(title, body_content, nearest_similar_articles, use_reasoning)
 
         # Use Instructor to get structured output
         final_response_model = SentimentAnalysisWithReasoning if use_reasoning else SentimentAnalysis
-        sentiment = client.chat.completions.create(
+        sentiment = LLM_CLIENT.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
@@ -165,7 +151,7 @@ def analyze_article(
         )
 
         logger.info(f"Analysis complete - Score: {sentiment.score}")
-        result_reasoning = getattr(sentiment, 'reasoning', '')
+        result_reasoning = getattr(sentiment, "reasoning", "")
         return SentimentAnalysisWithReasoning(success=sentiment.success, score=sentiment.score, reasoning=result_reasoning)
 
     except Exception as e:
@@ -174,7 +160,7 @@ def analyze_article(
         return SentimentAnalysisWithReasoning(success=False, score=5.0, reasoning=f"Analysis failed due to error: {e!s}")
 
 
-def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool = True, temperature: float = 0.1) -> list[dict[str, Any]]:
+def analyze_articles_batch(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Analyze multiple articles in batch.
 
@@ -186,8 +172,6 @@ def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool =
     Returns:
         list[dict[str, Any]]: List of ArticleWithSentiment objects as dictionaries.
     """
-    client = create_client()
-
     results = []
     total_articles = len(articles)
 
@@ -204,7 +188,7 @@ def analyze_articles_batch(articles: list[dict[str, Any]], use_reasoning: bool =
             unix_timestamp = article.get("unix_timestamp", "")
 
             # Analyze sentiment
-            sentiment = analyze_article(title, body, client, nearest_similar_articles=None, use_reasoning=use_reasoning, temperature=temperature)
+            sentiment = analyze_article(title, body)
 
             # Create result object
             article_with_sentiment = ArticleWithSentiment(
@@ -278,8 +262,6 @@ def print_analysis_summary(articles_with_sentiment: list[dict[str, Any]]) -> Non
 
 def main() -> None:
     """Main function to run the sentiment analysis process."""
-    config = get_config()
-
     news_dir, sentiments_dir = get_file_dirs()
 
     # Find latest news file
@@ -294,15 +276,8 @@ def main() -> None:
     if not articles:
         logger.error("No articles loaded for analysis")
         return
-    
-    use_reasoning = cast(bool, config["use_reasoning"])
-    temperature = cast(float, config["temperature"])
 
-    articles_with_sentiment = analyze_articles_batch(
-        articles,
-        use_reasoning=use_reasoning,
-        temperature=temperature
-    )
+    articles_with_sentiment = analyze_articles_batch(articles)
 
     # Save the results
     output_filename = make_timestamped_filename(
@@ -329,7 +304,6 @@ __all__ = [
     "SentimentAnalysis",
     "analyze_article",
     "analyze_articles_batch",
-    "create_client",
     "print_analysis_summary",
 ]
 
