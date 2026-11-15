@@ -1,7 +1,7 @@
 [project]
 name = "sentiment-analysis"
 version = "3.0.0"
-description = "Bitcoin news sentiment analysis tool with AI-powered insights"
+description = "Financial news sentiment analysis engine with structured LLM output and vector similarity retrieval"
 authors = [
     {name = "plomitt", email = "46419727+plomitt@users.noreply.github.com"}
 ]
