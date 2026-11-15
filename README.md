@@ -1,8 +1,10 @@
-# Bitcoin News Sentiment Analysis
+# Financial News Sentiment Analysis Engine
 
 ## About
 
 This project performs sentiment analysis of financial news articles using vector embeddings, similarity-based scoring, and structured LLM output. The system fetches news from RSS feeds, websockets, and social media. Then it processes the articles, and saves results to a SQL database efficiently.
+
+![Pipeline: collect, deduplicate, embed, retrieve, score, store](docs/images/pipeline.png)
 
 ## Installation
 
